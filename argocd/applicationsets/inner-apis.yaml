@@ -1,0 +1,46 @@
+# Une Application par couple (app, environnement), decouverte via apps/<app>/overlays/<env>/config.json.
+# Ajouter un environnement ou une app = ajouter un dossier + son config.json, rien d'autre.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: inner-apis
+  namespace: openshift-gitops
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/myc-public/gitops-platform.git
+        revision: main
+        files:
+          - path: "apps/*/overlays/*/config.json"
+  template:
+    metadata:
+      name: '{{ .app }}-{{ .env }}'
+      labels:
+        app.kubernetes.io/name: '{{ .app }}'
+        environment: '{{ .env }}'
+    spec:
+      project: inner-apis
+      source:
+        repoURL: https://github.com/myc-public/gitops-platform.git
+        targetRevision: main
+        path: '{{ .path.path }}'
+      destination:
+        server: '{{ .cluster }}'
+        namespace: '{{ .namespace }}'
+      syncPolicy:
+        syncOptions:
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 5
+          backoff: { duration: 10s, factor: 2, maxDuration: 3m }
+  # Synchro automatique uniquement si autoSync=true dans config.json (dev) ; sinon manuelle (prod)
+  templatePatch: |
+    {{- if .autoSync }}
+    spec:
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+    {{- end }}

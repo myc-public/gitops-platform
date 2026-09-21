@@ -1,0 +1,24 @@
+# A appliquer UNE seule fois a la main (oc apply -f bootstrap/root.yaml).
+# Ensuite Argo CD gere lui-meme argocd/ (projets + ApplicationSets) depuis Git : app-of-apps.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: openshift-gitops
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/myc-public/gitops-platform.git
+    targetRevision: main
+    path: argocd
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

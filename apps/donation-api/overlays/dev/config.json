@@ -1,0 +1,7 @@
+{
+  "app": "donation-api",
+  "env": "dev",
+  "cluster": "https://kubernetes.default.svc",
+  "namespace": "gregorie769-dev",
+  "autoSync": true
+}

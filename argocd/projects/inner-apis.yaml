@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: inner-apis
+  namespace: openshift-gitops
+spec:
+  description: APIs inner (donation, order, ...)
+  sourceRepos:
+    - https://github.com/myc-public/gitops-platform.git
+  # Ajouter ici chaque namespace/cluster cible (un par environnement)
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: gregorie769-dev
+  # Moindre privilege : aucune ressource cluster-scoped, uniquement ces types namespaced
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - { group: apps, kind: Deployment }
+    - { group: "", kind: Service }
+    - { group: "", kind: ConfigMap }
+    - { group: "", kind: ServiceAccount }
+    - { group: route.openshift.io, kind: Route }
+    - { group: autoscaling, kind: HorizontalPodAutoscaler }
