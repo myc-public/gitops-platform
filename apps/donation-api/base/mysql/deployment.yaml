@@ -46,12 +46,15 @@ spec:
             - name: data
               mountPath: /var/lib/mysql/data
           readinessProbe:
-            exec: { command: [/usr/libexec/check-container] }
+            # Pret = MySQL accepte une connexion de l'utilisateur applicatif (MYSQL_PWD : mot de passe hors ligne de commande)
+            exec:
+              command: [/bin/sh, -c, 'MYSQL_PWD="$MYSQL_PASSWORD" mysqladmin -u "$MYSQL_USER" -h 127.0.0.1 ping']
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
-            exec: { command: [/usr/libexec/check-container, --live] }
+            # Vivant = le port repond : ne depend pas des identifiants (un mot de passe change ne doit pas tuer le pod)
+            tcpSocket: { port: mysql }
             initialDelaySeconds: 120
             periodSeconds: 20
             timeoutSeconds: 10
