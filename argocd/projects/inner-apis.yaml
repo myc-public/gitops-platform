@@ -2,14 +2,15 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: inner-apis
-  namespace: openshift-gitops
+  namespace: argocd
 spec:
   description: APIs inner (donation, order, ...)
   sourceRepos:
     - https://github.com/myc-public/gitops-platform.git
-  # Ajouter ici chaque namespace/cluster cible (un par environnement)
+  # Ajouter ici chaque namespace/cluster cible (un par environnement).
+  # server = URL enregistree dans le Secret de cluster Argo CD (hors Git) : ici le Sandbox OpenShift.
   destinations:
-    - server: https://kubernetes.default.svc
+    - server: https://api.rm3.7wse.p1.openshiftapps.com:6443
       namespace: gregorie769-dev
   # Moindre privilege : aucune ressource cluster-scoped, uniquement ces types namespaced
   clusterResourceWhitelist: []

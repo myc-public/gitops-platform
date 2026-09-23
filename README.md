@@ -1,6 +1,6 @@
 # gitops-platform
 
-Source de vérité du déploiement (Argo CD / OpenShift GitOps). Ce dépôt ne contient **que de la configuration** : le code vit dans les dépôts applicatifs, les JARs dans Nexus, les images dans le registry interne OpenShift.
+Source de vérité du déploiement (Argo CD). Argo CD tourne sur **minikube** (namespace `argocd`) et déploie à distance sur le **Sandbox OpenShift** (namespace `gregorie769-dev`). Ce dépôt ne contient **que de la configuration** : le code vit dans les dépôts applicatifs, les JARs dans Nexus, les images dans le registry interne OpenShift.
 
 ```
 gitops-platform/
@@ -27,13 +27,19 @@ gitops-platform/
 
 ## Bootstrap (une fois)
 
-```bash
-# 1. Autoriser Argo CD sur le namespace cible
-oc label namespace gregorie769-dev argocd.argoproj.io/managed-by=openshift-gitops
+Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce sont elles qui lui donnent accès au cluster (paradoxe d'amorçage).
 
-# 2. Lancer l'app-of-apps : Argo CD crée ensuite AppProject + ApplicationSet + Applications
-oc apply -f bootstrap/root.yaml
-```
+1. **Sandbox** : identité d'Argo CD (ServiceAccount `argocd-deployer`, rôle `edit` limité à `gregorie769-dev`), voir `bootstrap/sandbox-cluster/README.md`.
+   ```
+   ocs apply -f bootstrap/sandbox-cluster/
+   ```
+2. **Minikube** : Secret de cluster `sandbox-gregorie769-dev` dans `argocd` (token de `argocd-deployer`), **hors Git**.
+3. **Minikube** : lancer l'app-of-apps. Argo CD crée ensuite AppProject + ApplicationSet + Applications.
+   ```
+  ###  k est le raccourci de kubctl fourni par minikube, cf. `bootstrap/root.yaml` pour le namespace et le nom de l'Application.
+   ```bash
+   k --context minikube apply -f bootstrap/root.yaml
+   ```
 
 Si un environnement vit dans un **autre namespace** que celui du build, autoriser le pull de l'image :
 

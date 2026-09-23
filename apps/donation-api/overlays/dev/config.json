@@ -1,7 +1,7 @@
 {
   "app": "donation-api",
   "env": "dev",
-  "cluster": "https://kubernetes.default.svc",
+  "cluster": "https://api.rm3.7wse.p1.openshiftapps.com:6443",
   "namespace": "gregorie769-dev",
   "autoSync": true
 }

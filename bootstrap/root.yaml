@@ -1,10 +1,11 @@
-# A appliquer UNE seule fois a la main (oc apply -f bootstrap/root.yaml).
+# A appliquer UNE seule fois a la main sur l'Argo CD de minikube (kubectl --context minikube apply -f bootstrap/root.yaml).
 # Ensuite Argo CD gere lui-meme argocd/ (projets + ApplicationSets) depuis Git : app-of-apps.
+# Destination = minikube lui-meme (kubernetes.default.svc) : seuls les objets Argo CD y sont crees, les apps ciblent le Sandbox.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: root
-  namespace: openshift-gitops
+  namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -17,7 +18,7 @@ spec:
       recurse: true
   destination:
     server: https://kubernetes.default.svc
-    namespace: openshift-gitops
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
