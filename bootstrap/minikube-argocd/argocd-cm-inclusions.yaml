@@ -1,4 +1,5 @@
-clear# Configuration Argo CD (minikube) : types de ressources surveilles par cluster.
+
+# Configuration Argo CD (minikube) : types de ressources surveilles par cluster.
 # Le Sandbox refuse le list de nombreux types (roles, podtemplates, CRD OpenShift AI...) meme a son proprietaire :
 # sans cette liste blanche, le cache Argo CD echoue et les Applications restent en "Unknown".
 # Toute ressource non listee est ignoree => regle "tout" obligatoire pour minikube (in-cluster), sinon root casse.
