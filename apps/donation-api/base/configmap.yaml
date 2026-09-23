@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: donation-api
 data:
-  DB_HOST: "mysql"
+  DB_HOST: "donation-api-mysql"
   DB_PORT: "3306"
   DB_NAME: "donation_api"
   DONATION_PORT: "8080"

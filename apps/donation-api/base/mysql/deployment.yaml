@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: donation-api-mysql
+  labels:
+    app.kubernetes.io/name: donation-api-mysql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: inner-apis
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  replicas: 1
+  # Recreate : volume RWO, jamais deux mysqld sur le meme datadir
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: donation-api-mysql
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: donation-api-mysql
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: mysql
+          # Image Red Hat (compatible UID aleatoire OpenShift), epinglee par digest = ImageStream openshift/mysql:8.0-el9
+          image: image-registry.openshift-image-registry.svc:5000/openshift/mysql@sha256:5d543cc71dd07e216dd182dcb400175e801e4f4fe19189673b8dcd71d2a53423
+          ports:
+            - name: mysql
+              containerPort: 3306
+              protocol: TCP
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef: { name: donation-api-config, key: DB_NAME }
+            # Meme secret que l'API (cree hors Git) : une seule source de verite pour les identifiants
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef: { name: donation-api-db-secret, key: DB_USER }
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: donation-api-db-secret, key: DB_PASSWORD }
+            # Pas de MYSQL_ROOT_PASSWORD : root reste limite au socket local, l'API n'utilise que DB_USER
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql/data
+          readinessProbe:
+            exec: { command: [/usr/libexec/check-container] }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec: { command: [/usr/libexec/check-container, --live] }
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { cpu: 500m, memory: 1Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: donation-api-mysql-data
