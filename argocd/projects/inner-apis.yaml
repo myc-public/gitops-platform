@@ -19,5 +19,6 @@ spec:
     - { group: "", kind: Service }
     - { group: "", kind: ConfigMap }
     - { group: "", kind: ServiceAccount }
+    - { group: "", kind: PersistentVolumeClaim }
     - { group: route.openshift.io, kind: Route }
     - { group: autoscaling, kind: HorizontalPodAutoscaler }

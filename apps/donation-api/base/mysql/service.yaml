@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: donation-api-mysql
+  labels:
+    app.kubernetes.io/name: donation-api-mysql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: inner-apis
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: donation-api-mysql
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+      protocol: TCP
