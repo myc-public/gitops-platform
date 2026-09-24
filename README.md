@@ -44,6 +44,11 @@ Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce so
    ```powershell
    k --context minikube apply -f bootstrap/root.yaml
    ```
+5. **Sandbox** : Secret `donation-api-db-secret` (`DB_USER`, `DB_PASSWORD`), **hors Git**, partagé par l'API et MySQL. Modèle : `bootstrap/secrets/dev/donation-api-db-secret.example.yaml` (à copier hors du dépôt, compléter, puis `apply -f`).
+   ```powershell
+   ocs apply -f <copie-hors-depot>.yaml
+   ```
+   Sans lui, les pods `donation-api` et `donation-api-mysql` restent en `CreateContainerConfigError`.
 
 Si un environnement vit dans un **autre namespace** que celui du build, autoriser le pull de l'image :
 
