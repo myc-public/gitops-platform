@@ -29,8 +29,11 @@ spec:
             # Secret cree hors Git (Sealed Secrets / External Secrets) : ne jamais commiter de secret ici
             - secretRef:
                 name: donation-api-db-secret
-          # base-path Actuator = /management (application.yml). Ouvert tant que myc.security.enabled=false :
-          # si la securite est activee, /management/** exige ADMIN -> sondes en 401, a traiter cote app.
+            # Comptes basic auth des endpoints /management (MANAGEMENT_*), cree hors Git
+            - secretRef:
+                name: donation-api-management-secret
+          # base-path Actuator = /management (application.yml). /management/health/** reste public
+          # (SecurityManagementConfig), quelle que soit la valeur de myc.security.enabled.
           readinessProbe:
             httpGet: { path: /management/health/readiness, port: http }
             initialDelaySeconds: 20
