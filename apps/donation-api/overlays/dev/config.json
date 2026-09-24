@@ -1,7 +1,7 @@
 {
   "app": "donation-api",
   "env": "dev",
-  "cluster": "https://api.rm3.7wse.p1.openshiftapps.com:6443",
+  "clusterName": "sandbox-gregorie769-dev",
   "namespace": "gregorie769-dev",
   "autoSync": true
 }

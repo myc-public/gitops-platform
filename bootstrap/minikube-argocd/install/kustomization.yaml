@@ -1,0 +1,17 @@
+# Installation d'Argo CD sur minikube, version EPINGLEE (mise a jour = changer le tag et re-appliquer) :
+#   k --context minikube apply --server-side --force-conflicts -k bootstrap/minikube-argocd/install
+# Server-side apply : les CRD d'Argo CD depassent la taille max de l'annotation du client-side apply.
+# Verifie le 24/09 : "kubectl diff" = identique a l'installation en service (installee a la main le 22/09).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+resources:
+  - namespace.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.3/manifests/install.yaml
+patches:
+  # Pas de SSO (Dex) : connexion avec le compte admin local => pas de pod inutile
+  - target: { kind: Deployment, name: argocd-dex-server }
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 0

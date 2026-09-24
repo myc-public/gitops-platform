@@ -20,16 +20,17 @@ data:
     - apiGroups: ["*"]
       kinds: ["*"]
       clusters: ["https://kubernetes.default.svc"]
-    # Sandbox : types geres (cf. AppProject inner-apis) + types lus pour la sante (Pod, ReplicaSet, Endpoints)
+    # Cluster OpenShift cible (motif glob : toute API OpenShift, survit a un changement de cluster)
+    # types geres (cf. AppProject inner-apis) + types lus pour la sante (Pod, ReplicaSet, Endpoints)
     - apiGroups: [""]
       kinds: [Service, ConfigMap, ServiceAccount, PersistentVolumeClaim, Pod, Endpoints]
-      clusters: ["https://api.rm3.7wse.p1.openshiftapps.com:6443"]
+      clusters: ["https://api.*:6443"]
     - apiGroups: [apps]
       kinds: [Deployment, ReplicaSet]
-      clusters: ["https://api.rm3.7wse.p1.openshiftapps.com:6443"]
+      clusters: ["https://api.*:6443"]
     - apiGroups: [route.openshift.io]
       kinds: [Route]
-      clusters: ["https://api.rm3.7wse.p1.openshiftapps.com:6443"]
+      clusters: ["https://api.*:6443"]
     - apiGroups: [autoscaling]
       kinds: [HorizontalPodAutoscaler]
-      clusters: ["https://api.rm3.7wse.p1.openshiftapps.com:6443"]
+      clusters: ["https://api.*:6443"]

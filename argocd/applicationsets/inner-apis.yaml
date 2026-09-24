@@ -27,7 +27,8 @@ spec:
         targetRevision: main
         path: '{{ .path.path }}'
       destination:
-        server: '{{ .cluster }}'
+        # Cluster designe par son NOM (Secret de cluster, hors Git) : l'URL d'API n'apparait nulle part dans Git
+        name: '{{ .clusterName }}'
         namespace: '{{ .namespace }}'
       syncPolicy:
         syncOptions:
