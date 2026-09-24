@@ -49,6 +49,11 @@ Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce so
    ocs apply -f <copie-hors-depot>.yaml
    ```
    Sans lui, les pods `donation-api` et `donation-api-mysql` restent en `CreateContainerConfigError`.
+6. **Sandbox** : Secret `donation-api-management-secret` (`MANAGEMENT_ADMIN_USER/PWD`, `MANAGEMENT_VIEWER_USER/PWD`), **hors Git** : comptes basic auth des endpoints `/management` de l'API (`/management/health/**` reste public pour les sondes). Modèle : `bootstrap/secrets/dev/donation-api-management-secret.example.yaml` (à copier hors du dépôt, compléter, puis `apply -f`).
+   ```powershell
+   ocs apply -f <copie-hors-depot>.yaml
+   ```
+   À appliquer **avant** de synchroniser un overlay qui le référence : sinon le pod `donation-api` reste en `CreateContainerConfigError`.
 
 Si un environnement vit dans un **autre namespace** que celui du build, autoriser le pull de l'image :
 
