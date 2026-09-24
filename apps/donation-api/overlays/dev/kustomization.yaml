@@ -3,11 +3,6 @@ kind: Kustomization
 namespace: gregorie769-dev
 resources:
   - ../../base
-images:
-  - name: donation-api
-    newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/donation-api
-    # Ligne mise a jour automatiquement par Jenkins (stage "Update GitOps") : ne pas editer a la main
-    newTag: 1.1.0-SNAPSHOT-77e155e-b14
 # Profil propre a l'environnement : la base reste neutre, chaque overlay injecte le sien
 patches:
   - target: { kind: ConfigMap, name: donation-api-config }
@@ -15,3 +10,8 @@ patches:
       - op: add
         path: /data/SPRING_PROFILES_ACTIVE
         value: dev
+images:
+  - name: donation-api
+    newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/donation-api
+    # Ligne mise a jour automatiquement par Jenkins (stage "Update GitOps") : ne pas editer a la main
+    newTag: 1.1.0-SNAPSHOT-1278a5b-b24
