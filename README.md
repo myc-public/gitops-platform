@@ -29,6 +29,8 @@ gitops-platform/
 
 Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce sont elles qui lui donnent accès au cluster (paradoxe d'amorçage).
 
+> **Reconstruction complète sur un nouveau cluster** (installation d'Argo CD comprise) : suivre [`REBUILD.md`](REBUILD.md), point d'entrée unique.
+
 > `k` est le raccourci de `kubectl` fourni par minikube ; `ocs` est la fonction qui cible le Sandbox (kubeconfig `sandbox.config`).
 
 1. **Sandbox** : identité d'Argo CD (ServiceAccount `argocd-deployer`, rôle `edit` limité à `gregorie769-dev`), voir `bootstrap/sandbox-cluster/README.md`.

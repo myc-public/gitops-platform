@@ -8,9 +8,9 @@ spec:
   sourceRepos:
     - https://github.com/myc-public/gitops-platform.git
   # Ajouter ici chaque namespace/cluster cible (un par environnement).
-  # server = URL enregistree dans le Secret de cluster Argo CD (hors Git) : ici le Sandbox OpenShift.
+  # name = nom du Secret de cluster Argo CD (hors Git, porte l'URL d'API) : ici le Sandbox OpenShift.
   destinations:
-    - server: https://api.rm3.7wse.p1.openshiftapps.com:6443
+    - name: sandbox-gregorie769-dev
       namespace: gregorie769-dev
   # Moindre privilege : aucune ressource cluster-scoped, uniquement ces types namespaced
   clusterResourceWhitelist: []
