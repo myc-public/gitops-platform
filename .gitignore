@@ -47,3 +47,6 @@ README_local.md
 CHANGELOG.md
 docs
 .log
+bootstrap/secrets/**/*.yaml
+!bootstrap/secrets/**/*.example.yaml
+donation-api-db-secret.dev.yaml
