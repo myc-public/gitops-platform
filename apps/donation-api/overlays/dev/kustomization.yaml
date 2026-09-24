@@ -3,6 +3,13 @@ kind: Kustomization
 namespace: gregorie769-dev
 resources:
   - ../../base
+# Profil propre a l'environnement : la base reste neutre, chaque overlay injecte le sien
+patches:
+  - target: { kind: ConfigMap, name: donation-api-config }
+    patch: |-
+      - op: add
+        path: /data/SPRING_PROFILES_ACTIVE
+        value: dev
 images:
   - name: donation-api
     newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/donation-api
