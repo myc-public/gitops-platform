@@ -29,14 +29,18 @@ spec:
             # Secret cree hors Git (Sealed Secrets / External Secrets) : ne jamais commiter de secret ici
             - secretRef:
                 name: donation-api-db-secret
+          # base-path Actuator = /management (application.yml). Ouvert tant que myc.security.enabled=false :
+          # si la securite est activee, /management/** exige ADMIN -> sondes en 401, a traiter cote app.
           readinessProbe:
-            httpGet: { path: /actuator/health/readiness, port: http }
+            httpGet: { path: /management/health/readiness, port: http }
             initialDelaySeconds: 20
             periodSeconds: 10
+            timeoutSeconds: 3
           livenessProbe:
-            httpGet: { path: /actuator/health/liveness, port: http }
+            httpGet: { path: /management/health/liveness, port: http }
             initialDelaySeconds: 40
             periodSeconds: 20
+            timeoutSeconds: 3
           resources:
             requests: { cpu: 100m, memory: 384Mi }
             limits: { cpu: "1", memory: 768Mi }
