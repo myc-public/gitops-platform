@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: otel-lgtm-data
+  labels:
+    app.kubernetes.io/name: otel-lgtm
+    app.kubernetes.io/part-of: observability
+  annotations:
+    # Jamais supprimee par Argo CD : les donnees (metriques, logs, traces, config Grafana) survivent a l'Application
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # Pas de storageClassName : classe par defaut du cluster => manifeste portable
+  resources:
+    requests:
+      storage: 10Gi

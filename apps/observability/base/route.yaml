@@ -1,0 +1,17 @@
+# Seul Grafana est expose (login obligatoire) ; les ports OTLP restent internes
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: grafana
+  labels:
+    app.kubernetes.io/name: otel-lgtm
+    app.kubernetes.io/part-of: observability
+spec:
+  to:
+    kind: Service
+    name: otel-lgtm
+  port:
+    targetPort: grafana
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

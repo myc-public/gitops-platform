@@ -85,6 +85,7 @@ Copies restaurées à l'étape 0 (modèles : `bootstrap/secrets/dev/*.example.ya
 ```powershell
 ocs apply -f bootstrap/secrets/dev/donation-api-db-secret.dev.yaml
 ocs apply -f bootstrap/secrets/dev/donation-api-management-secret.dev.yaml
+ocs apply -f bootstrap/secrets/dev/observability-grafana-secret.dev.yaml   # compte admin Grafana (stack otel-lgtm)
 ```
 
 ## 7. Premier build Jenkins
