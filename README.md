@@ -56,6 +56,11 @@ Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce so
    ocs apply -f <copie-hors-depot>.yaml
    ```
    À appliquer **avant** de synchroniser un overlay qui le référence : sinon le pod `donation-api` reste en `CreateContainerConfigError`.
+7. **Sandbox** : Secret `observability-grafana-secret` (`GF_SECURITY_ADMIN_USER`, `GF_SECURITY_ADMIN_PASSWORD`), **hors Git** : compte administrateur de Grafana (stack `apps/observability`, accès anonyme désactivé). Modèle : `bootstrap/secrets/dev/observability-grafana-secret.example.yaml`.
+   ```powershell
+   ocs apply -f <copie-hors-depot>.yaml
+   ```
+   À appliquer **avant** la synchro de `observability-dev` : sinon le pod `otel-lgtm` reste en `CreateContainerConfigError`.
 
 Si un environnement vit dans un **autre namespace** que celui du build, autoriser le pull de l'image :
 

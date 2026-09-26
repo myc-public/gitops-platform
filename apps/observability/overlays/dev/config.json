@@ -1,0 +1,7 @@
+{
+  "app": "observability",
+  "env": "dev",
+  "clusterName": "sandbox-gregorie769-dev",
+  "namespace": "gregorie769-dev",
+  "autoSync": true
+}

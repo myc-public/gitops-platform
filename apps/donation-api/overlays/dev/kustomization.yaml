@@ -14,6 +14,13 @@ patches:
       - op: add
         path: /data/MYC_CONTEXT
         value: /
+      # Observabilite : traces / metriques / logs en OTLP vers la stack otel-lgtm (apps/observability)
+      - op: add
+        path: /data/OTLP_ENDPOINT
+        value: http://otel-lgtm:4318
+      - op: add
+        path: /data/OTLP_EXPORT_ENABLED
+        value: "true"
 images:
   - name: donation-api
     newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/donation-api
