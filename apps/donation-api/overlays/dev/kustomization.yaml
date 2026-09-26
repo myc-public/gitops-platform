@@ -25,4 +25,4 @@ images:
   - name: donation-api
     newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/donation-api
     # Ligne mise a jour automatiquement par Jenkins (stage "Update GitOps") : ne pas editer a la main
-    newTag: 1.1.0-SNAPSHOT-9420ad3-b27
+    newTag: 1.1.0-SNAPSHOT-5bbfcdf-b30
