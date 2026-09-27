@@ -7,3 +7,16 @@ resources:
   - deployment.yaml
   - service.yaml
   - route.yaml
+# Exploitation as code (phase 4) : dashboards, fournisseur et alertes provisionnes dans Grafana depuis Git.
+configMapGenerator:
+  # Nom stable : ConfigMap montee en repertoire, relue a chaud par Grafana (pas de redemarrage du pod)
+  - name: otel-lgtm-dashboards
+    files:
+      - grafana/dashboards/donation-api-service.json
+    options:
+      disableNameSuffixHash: true
+  # Nom suffixe par un hash : toute modification redemarre Grafana, seul moment ou il relit ces fichiers
+  - name: otel-lgtm-grafana-provisioning
+    files:
+      - grafana/dashboards-provider.yaml
+      - grafana/alerting/donation-api-alerts.yaml

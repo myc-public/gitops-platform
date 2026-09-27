@@ -1,0 +1,251 @@
+# Alertes du pilote donation-api (phase 4, jenkins-on-openshift-with-terraform/docs/dashboard-v1.md).
+# Regles gerees par Grafana (pas de PrometheusRule : les metriques OTLP ne sont pas dans le Prometheus d'OpenShift).
+# Provisionnees au demarrage de Grafana, non modifiables dans l'UI. Pas de contact point externe (pilote) :
+# les alertes sont visibles dans Grafana > Alerting.
+# Convention : A = requete PromQL, C = seuil. Sans donnees = pas d'incident (sauf A1).
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: donation-api
+    folder: donation-api
+    interval: 30s
+    rules:
+      - uid: donation-api-a1-muette
+        title: "A1 - donation-api muette (plus de telemetrie)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: count(present_over_time(target_info{job="inner-apis/inner-donation-api"}[2m])) or vector(0)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+        noDataState: Alerting
+        execErrState: Error
+        for: 0s
+        labels: { severity: critical, service: inner-donation-api }
+        annotations:
+          summary: "Aucune metrique recue de donation-api depuis 2 min"
+          description: "Pod arrete, crash ou export OTLP en panne. Verifier le pod et les logs du conteneur."
+          __dashboardUid__: donation-api-service
+          __panelId__: "7"
+
+      - uid: donation-api-a2-5xx
+        title: "A2 - donation-api taux de 5xx > 5 %"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # Taux 5xx sur 5 min, seulement si le trafic depasse 0,1 req/s (evite 1 erreur sur 2 requetes)
+              expr: >-
+                (
+                  sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*",status=~"5.."}[5m]))
+                  / sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*"}[5m]))
+                )
+                and on (deployment_environment_name)
+                (sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*"}[5m])) >= 0.1)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0.05] }
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels: { severity: critical, service: inner-donation-api }
+        annotations:
+          summary: "Plus de 5 % de reponses 5xx sur 5 min ({{ $labels.deployment_environment_name }})"
+          description: "Dashboard > Traces en erreur, puis Logs for this span pour la cause."
+          __dashboardUid__: donation-api-service
+          __panelId__: "3"
+
+      - uid: donation-api-a3-p95
+        title: "A3 - donation-api latence p95 > 300 ms"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: >-
+                histogram_quantile(0.95, sum by (le, deployment_environment_name)(rate(http_server_requests_milliseconds_bucket{job="inner-apis/inner-donation-api",uri!~"/management.*"}[10m])))
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [300] }
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels: { severity: warning, service: inner-donation-api }
+        annotations:
+          summary: "p95 superieur a 300 ms sur 10 min ({{ $labels.deployment_environment_name }})"
+          description: "Dashboard > Traces lentes (> 300 ms) pour identifier le span dominant (SQL, securite, HTTP)."
+          __dashboardUid__: donation-api-service
+          __panelId__: "4"
+
+      - uid: donation-api-a4-db
+        title: "A4 - donation-api base de donnees indisponible"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # Requetes en attente de connexion OU timeouts d'acquisition sur 2 min
+              expr: >-
+                (max by (deployment_environment_name)(hikaricp_connections_pending{job="inner-apis/inner-donation-api"}) > 0)
+                or
+                (sum by (deployment_environment_name)(increase(hikaricp_connections_timeout_total{job="inner-apis/inner-donation-api"}[2m])) > 0)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels: { severity: critical, service: inner-donation-api }
+        annotations:
+          summary: "Pool Hikari en attente ou en timeout depuis 2 min ({{ $labels.deployment_environment_name }})"
+          description: "MySQL arrete (idler du Sandbox, pod en echec) ou pool sature. Verifier le Deployment MySQL."
+          __dashboardUid__: donation-api-service
+          __panelId__: "29"
+
+      - uid: donation-api-a5-logs-error
+        title: "A5 - donation-api logs ERROR"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              expr: sum by (deployment_environment_name)(increase(logback_events_total{job="inner-apis/inner-donation-api",level="error"}[5m]))
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: warning, service: inner-donation-api }
+        annotations:
+          summary: "Logs ERROR emis sur les 5 dernieres minutes ({{ $labels.deployment_environment_name }})"
+          description: "Dashboard > Logs ERROR / WARN (clic trace_id vers la trace)."
+          __dashboardUid__: donation-api-service
+          __panelId__: "32"
+
+      # SLO disponibilite 99 % sur 7 j : burn rate multi-fenetres (Google SRE workbook)
+      - uid: donation-api-a6-burn-fast
+        title: "A6 - donation-api SLO disponibilite : burn rate rapide"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # 14,4x : a ce rythme, le budget de 7 jours est consomme en moins de 12 h
+              expr: >-
+                (
+                  sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*",status=~"5.."}[1h]))
+                  / sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*"}[1h]))
+                  / 0.01 > 14.4
+                )
+                and on (deployment_environment_name)
+                (
+                  sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*",status=~"5.."}[5m]))
+                  / sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*"}[5m]))
+                  / 0.01 > 14.4
+                )
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        labels: { severity: critical, service: inner-donation-api, slo: disponibilite }
+        annotations:
+          summary: "Budget d'erreur consomme a plus de 14,4x (1h et 5m) ({{ $labels.deployment_environment_name }})"
+          description: "Au rythme actuel, le budget d'erreur de 7 jours est epuise en moins de 12 h."
+          __dashboardUid__: donation-api-service
+          __panelId__: "18"
+
+      - uid: donation-api-a6-burn-slow
+        title: "A6 - donation-api SLO disponibilite : burn rate lent"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 21600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # 6x : a ce rythme, le budget de 7 jours est consomme en un peu plus d'une journee
+              expr: >-
+                (
+                  sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*",status=~"5.."}[6h]))
+                  / sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*"}[6h]))
+                  / 0.01 > 6
+                )
+                and on (deployment_environment_name)
+                (
+                  sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*",status=~"5.."}[30m]))
+                  / sum by (deployment_environment_name)(rate(http_server_requests_milliseconds_count{job="inner-apis/inner-donation-api",uri!~"/management.*"}[30m]))
+                  / 0.01 > 6
+                )
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning, service: inner-donation-api, slo: disponibilite }
+        annotations:
+          summary: "Budget d'erreur consomme a plus de 6x (6h et 30m) ({{ $labels.deployment_environment_name }})"
+          description: "Degradation lente : a traiter dans la journee."
+          __dashboardUid__: donation-api-service
+          __panelId__: "18"
