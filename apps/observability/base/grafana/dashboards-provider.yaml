@@ -1,0 +1,13 @@
+# Fournisseur de dashboards versionnes (ajoute a ceux de l'image otel-lgtm, sans les remplacer).
+# Les JSON viennent de la ConfigMap otel-lgtm-dashboards, relue toutes les 30 s (pas de redemarrage).
+apiVersion: 1
+providers:
+  - name: socle-dashboards
+    type: file
+    folder: donation-api
+    # Source de verite = Git : modifications dans l'UI refusees
+    allowUiUpdates: false
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /otel-lgtm/socle-dashboards

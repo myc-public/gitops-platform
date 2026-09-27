@@ -65,6 +65,17 @@ spec:
               mountPath: /var/tempo
             - name: tmp
               mountPath: /tmp
+            # Phase 4 : fichiers ajoutes un a un (subPath) pour garder ceux fournis par l'image
+            - name: grafana-provisioning
+              mountPath: /otel-lgtm/grafana/conf/provisioning/dashboards/socle-dashboards.yaml
+              subPath: dashboards-provider.yaml
+            - name: grafana-provisioning
+              mountPath: /otel-lgtm/grafana/conf/provisioning/alerting/donation-api-alerts.yaml
+              subPath: donation-api-alerts.yaml
+            # Repertoire complet (pas de subPath) : mis a jour a chaud par le kubelet
+            - name: dashboards
+              mountPath: /otel-lgtm/socle-dashboards
+              readOnly: true
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -73,3 +84,9 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+        - name: grafana-provisioning
+          configMap:
+            name: otel-lgtm-grafana-provisioning
+        - name: dashboards
+          configMap:
+            name: otel-lgtm-dashboards
