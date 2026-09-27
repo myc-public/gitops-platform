@@ -27,6 +27,11 @@ spec:
             # Defaut de l'image = acces anonyme avec le role Admin : interdit derriere une Route publique
             - name: GF_AUTH_ANONYMOUS_ENABLED
               value: "false"
+            # Plugins figes par le digest de l'image : pas de mise a jour depuis grafana.com au demarrage.
+            # Sous UID aleatoire (OpenShift), la mise a jour echoue (plugins-bundled non inscriptible) et
+            # desenregistre Prometheus / Tempo (alertes en "plugin not registered").
+            - name: GF_PLUGINS_PREINSTALL_AUTO_UPDATE
+              value: "false"
           envFrom:
             # GF_SECURITY_ADMIN_USER / GF_SECURITY_ADMIN_PASSWORD, cree hors Git
             - secretRef:
