@@ -2,7 +2,7 @@
 
 Point d'entrée pour remonter toute la chaîne (Jenkins → Nexus / registry → GitOps → Argo CD → OpenShift) sur un **nouveau cluster OpenShift** (Sandbox renouvelé, OpenShift Local, OKD...), à partir de Git seul et des secrets sauvegardés.
 
-État de référence : tag Git `sandbox-v1` sur tous les dépôts (build #25, 24/09/2026).
+État de référence : tag Git `sandbox-v2` sur tous les dépôts (build #33, 28/09/2026 : pipeline CI/CD, observabilité phases 1-4, API First L0, architecture sécurité). Précédent : `sandbox-v1` (build #25, 24/09).
 Commandes en PowerShell. `ocs` = `oc --kubeconfig "$HOME\.kube\sandbox.config"` (profil PowerShell), `k` = `kubectl`.
 
 ## 0. Prérequis
@@ -11,12 +11,17 @@ Commandes en PowerShell. `ocs` = `oc --kubeconfig "$HOME\.kube\sandbox.config"` 
 |---|---|
 | Outils | `oc`, `kubectl`, `terraform`, Docker Desktop, minikube v1.37, 7-Zip, `cloudflared` |
 | minikube | profil `minikube`, driver docker, 2 CPU, 3 Go, Kubernetes v1.34.0 |
-| Sauvegarde | `D:\backup\socle-sandbox-v1-<date>\` : `fichiers-locaux.7z` (chiffré), `nexus-data.tgz` |
+| Sauvegarde | `D:\backup\socle-sandbox-v2-<date>\` : `fichiers-locaux.7z` (chiffré, en-têtes compris : fichiers hors Git, dump MySQL, mémoire Claude), `nexus-data.tgz` |
 | Dépôts | `myc-public/*` clonés sous `D:\workspace\public` |
 
-Restaurer les fichiers locaux (secrets Terraform, copies des secrets applicatifs, `local/.env`, `docs/ROADMAP.md`...) à leur place :
+Se placer sur l'état de référence dans chaque dépôt :
 ```powershell
-& "C:\Program Files\7-Zip\7z.exe" x "D:\backup\socle-sandbox-v1-<date>\fichiers-locaux.7z" -o"D:\workspace\public"
+Get-ChildItem D:\workspace\public -Directory | Where-Object { Test-Path "$($_.FullName)\.git" } | ForEach-Object { git -C $_.FullName fetch --tags; git -C $_.FullName checkout sandbox-v2 }
+```
+Restaurer les fichiers hors Git (secrets Terraform et tfstate, copies des secrets applicatifs `*.dev.yaml`, `local/.env`, README locaux, dump MySQL et mémoire Claude dans `_backup\`) à leur place (mot de passe demandé) :
+```powershell
+& "C:\Program Files\7-Zip\7z.exe" x "D:\backup\socle-sandbox-v2-<date>\fichiers-locaux.7z" -o"D:\workspace\public"
+Copy-Item D:\workspace\public\_backup\claude-memory\* "$HOME\.claude\projects\D--workspace-public\memory\" -Force   # optionnel
 ```
 
 ## 1. Nexus et tunnel (poste local)
@@ -24,7 +29,7 @@ Restaurer les fichiers locaux (secrets Terraform, copies des secrets applicatifs
 Si le volume `nexus-data` a été perdu :
 ```powershell
 docker volume create nexus-data
-docker run --rm -v nexus-data:/data -v "D:\backup\socle-sandbox-v1-<date>:/backup" alpine tar xzf /backup/nexus-data.tgz -C /data
+docker run --rm -v nexus-data:/data -v "D:\backup\socle-sandbox-v2-<date>:/backup" alpine tar xzf /backup/nexus-data.tgz -C /data
 ```
 Démarrer le conteneur `nexus` (voir `jenkins-on-openshift-with-terraform/README_local.md`), puis le tunnel ; reporter l'URL obtenue dans `nexus_url` de `terraform/secrets.auto.tfvars`.
 
@@ -97,7 +102,14 @@ Lancer le job `inner-donation-api` (branche `main`) : il publie le jar dans Nexu
 
 ```powershell
 k --context minikube apply -f bootstrap/root.yaml
-k --context minikube get applications -n argocd           # root + donation-api-dev : Synced / Healthy (≈ 3 min)
+k --context minikube get applications -n argocd           # root + donation-api-dev + observability-dev : Synced / Healthy (≈ 3 min)
+```
+`observability-dev` déploie otel-lgtm (Grafana, Prometheus, Loki, Tempo) avec le dashboard `donation-api — Service` et les 7 alertes provisionnés depuis Git (`apps/observability/base/grafana`) : rien à restaurer, l'historique de télémétrie n'est pas sauvegardé.
+Piège connu : alertes en `plugin not registered` → vérifier `GF_PLUGINS_PREINSTALL_AUTO_UPDATE=false` dans `apps/observability/base/deployment.yaml` (mise à jour des plugins impossible sous UID aléatoire).
+
+**Optionnel — restaurer le jeu de données de test** (sinon Flyway crée un schéma vide) :
+```powershell
+Get-Content D:\workspace\public\_backup\donation-api-mysql.sql -Raw | ocs exec -i deploy/donation-api-mysql -- bash -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"'
 ```
 
 ## 9. Recette
@@ -109,5 +121,13 @@ curl.exe -s -o NUL -w "health %{http_code}`n"  "$h/management/health"        # 2
 curl.exe -s -o NUL -w "loggers %{http_code}`n" "$h/management/loggers"       # 401
 curl.exe -s -o NUL -w "api-docs %{http_code}`n" "$h/docs/api-docs"           # 200
 curl.exe -s "$h/management/info"                                             # build.version
+
+# Observabilite
+$g = "https://" + (ocs get route grafana -o jsonpath='{.spec.host}')
+curl.exe -s -o NUL -w "grafana anonyme %{http_code}`n" "$g/api/search"      # 401
 ```
+Connecté à Grafana (compte de `observability-grafana-secret`) :
+- `/d/donation-api-service/donation-api-e28094-service?var-env=dev` : « Télémétrie reçue » = OK, « Version déployée » renseignée ;
+- Alerting : 7 règles `donation-api`, santé `ok` ;
+- Postman : collection `inner-donation-api/postman`, dossier S1 avec `observabilite-s1-nominal.data.json` (180 tests verts) puis S2 avec `observabilite-s2-erreurs.data.json` (15 tests verts) ; le dashboard montre le trafic, les dons par catégorie et les 4xx, Tempo les traces avec spans SQL.
 Consigner le résultat dans `jenkins-on-openshift-with-terraform/docs/ROADMAP.md` (journal).
