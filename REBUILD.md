@@ -21,6 +21,7 @@ Get-ChildItem D:\workspace\public -Directory | Where-Object { Test-Path "$($_.Fu
 Restaurer les fichiers hors Git (secrets Terraform et tfstate, copies des secrets applicatifs `*.dev.yaml`, `local/.env`, README locaux, dump MySQL et mémoire Claude dans `_backup\`) à leur place (mot de passe demandé) :
 ```powershell
 & "C:\Program Files\7-Zip\7z.exe" x "D:\backup\socle-sandbox-v2-<date>\fichiers-locaux.7z" -o"D:\workspace\public"
+# Si la console refuse le mot de passe (caracteres speciaux mal transmis) : ouvrir l'archive dans l'interface 7-Zip et extraire vers D:\workspace\public
 Copy-Item D:\workspace\public\_backup\claude-memory\* "$HOME\.claude\projects\D--workspace-public\memory\" -Force   # optionnel
 ```
 
