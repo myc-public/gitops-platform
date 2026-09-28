@@ -1,0 +1,84 @@
+# Keycloak de DEV LOCAL (lot K1) : jamais deploye. Source de verite du deploiement = apps/keycloak (Argo CD).
+# Meme realm que sur OpenShift : les fichiers de apps/keycloak sont montes tels quels (aucune copie).
+#   docker compose -f local/keycloak/compose.yaml --env-file local/keycloak/.env up -d
+#   Console admin : http://localhost:8180/admin (local uniquement) ; issuer : http://localhost:8180/realms/myc
+name: keycloak-local
+
+services:
+  keycloak-db:
+    # Epinglee par digest : meme image que sur OpenShift
+    image: quay.io/sclorg/postgresql-16-c9s@sha256:b508e74304788fb4a5a2af76d8d013f20a18ee38bff3d24a705d7b730b8c0a30
+    environment:
+      POSTGRESQL_DATABASE: keycloak
+      POSTGRESQL_USER: ${KC_DB_USERNAME:?KC_DB_USERNAME absent - copier .env.example en .env}
+      POSTGRESQL_PASSWORD: ${KC_DB_PASSWORD:?KC_DB_PASSWORD absent}
+    volumes:
+      - keycloak-db-data:/var/lib/pgsql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRESQL_USER\" -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c   # 26.7.4
+    # Mode production (DK3), comme sur OpenShift ; build des options au demarrage (~20 s)
+    command: ["start"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      # URL publique = issuer des tokens ; backchannel dynamique pour les appels internes (config-cli, API)
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      # Sante et metriques sur le port de management 9000 (jamais expose hors du reseau compose)
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      # Compte admin de demarrage (master) : utilise par keycloak-config-cli
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:?KC_BOOTSTRAP_ADMIN_USERNAME absent}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:?KC_BOOTSTRAP_ADMIN_PASSWORD absent}
+    ports:
+      - "127.0.0.1:8180:8080"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    healthcheck:
+      # Pas de curl dans l'image : requete HTTP brute sur le port de management
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # Applique le realm (DK1) puis s'arrete ; relancer pour reappliquer une modification :
+  #   docker compose -f local/keycloak/compose.yaml --env-file local/keycloak/.env run --rm keycloak-config
+  keycloak-config:
+    image: quay.io/adorsys/keycloak-config-cli@sha256:0955d98c8a341898b7aa177477edf8a1e90569ae50bbe7598141c1270b773274   # 6.5.1-26.5.5
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_USER: ${KC_BOOTSTRAP_ADMIN_USERNAME}
+      KEYCLOAK_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
+      KEYCLOAK_AVAILABILITYCHECK_ENABLED: "true"
+      KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: 120s
+      IMPORT_FILES_LOCATIONS: /config/*
+      IMPORT_VARSUBSTITUTION_ENABLED: "true"
+      # Valeurs substituees dans les fichiers du realm
+      DONATION_WEB_BASE_URL: http://localhost:3000
+      DONATION_TESTS_CLIENT_ENABLED: "true"
+      DONATION_WEB_CLIENT_SECRET: ${DONATION_WEB_CLIENT_SECRET:?DONATION_WEB_CLIENT_SECRET absent}
+      DONATION_SERVICE_CLIENT_SECRET: ${DONATION_SERVICE_CLIENT_SECRET:?DONATION_SERVICE_CLIENT_SECRET absent}
+      DONATION_TESTS_CLIENT_SECRET: ${DONATION_TESTS_CLIENT_SECRET:?DONATION_TESTS_CLIENT_SECRET absent}
+      TEST_USERS_PASSWORD: ${TEST_USERS_PASSWORD:?TEST_USERS_PASSWORD absent}
+    volumes:
+      # Memes fichiers que le deploiement OpenShift, appliques dans l'ordre alphabetique (10 puis 20)
+      - ../../apps/keycloak/base/realm/10-realm.yaml:/config/10-realm.yaml:ro
+      - ../../apps/keycloak/overlays/dev/realm/20-users-dev.yaml:/config/20-users-dev.yaml:ro
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  keycloak-db-data:

@@ -1,0 +1,37 @@
+# Utilisateurs de test - overlay dev UNIQUEMENT (jamais en uat / preprod / prod).
+# Mot de passe commun dans keycloak-secret (TEST_USERS_PASSWORD, hors Git).
+# Uniquement des users : ce fichier ne doit jamais definir clients, roles ni clientScopes (geres par 10-realm.yaml).
+realm: myc
+users:
+  - username: admin.test
+    enabled: true
+    email: admin.test@example.test
+    emailVerified: true
+    firstName: Admin
+    lastName: Test
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    clientRoles: { donation-api: [admin] }
+  - username: agent.test
+    enabled: true
+    email: agent.test@example.test
+    emailVerified: true
+    firstName: Agent
+    lastName: Test
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    clientRoles: { donation-api: [agent] }
+  - username: donor.a
+    enabled: true
+    email: donor.a@example.test
+    emailVerified: true
+    firstName: Donor
+    lastName: A
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    clientRoles: { donation-api: [donor] }
+  - username: donor.b
+    enabled: true
+    email: donor.b@example.test
+    emailVerified: true
+    firstName: Donor
+    lastName: B
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    clientRoles: { donation-api: [donor] }

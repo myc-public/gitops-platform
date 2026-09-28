@@ -1,0 +1,146 @@
+# Realm myc - applique par keycloak-config-cli (idempotent), local et OpenShift.
+# Variables d'environnement substituees (syntaxe dollar-parenthese env:NOM) : secrets (keycloak-secret, hors Git)
+# et valeurs d'environnement (ConfigMap de l'overlay). La substitution porte sur tout le texte, commentaires compris :
+# ne jamais ecrire cette syntaxe dans un commentaire.
+# Clients, roles et client scopes sont geres en entier par keycloak-config-cli : ne les definir QUE dans ce fichier.
+realm: myc
+enabled: true
+displayName: MYC
+sslRequired: external
+registrationAllowed: false
+loginWithEmailAllowed: true
+duplicateEmailsAllowed: false
+resetPasswordAllowed: true
+# Protection contre le bourrage d'identifiants
+bruteForceProtected: true
+failureFactor: 5
+waitIncrementSeconds: 60
+maxFailureWaitSeconds: 900
+passwordPolicy: "length(12) and notUsername and notEmail"
+# Tokens courts, refresh token a usage unique (rotation)
+accessTokenLifespan: 300
+ssoSessionIdleTimeout: 1800
+ssoSessionMaxLifespan: 36000
+revokeRefreshToken: true
+refreshTokenMaxReuse: 0
+# Audit (lot K8) : evenements de connexion ; admin sans details (donnees personnelles)
+eventsEnabled: true
+eventsExpiration: 604800
+enabledEventTypes: [LOGIN, LOGIN_ERROR, LOGOUT, CODE_TO_TOKEN, CODE_TO_TOKEN_ERROR, CLIENT_LOGIN, CLIENT_LOGIN_ERROR, REFRESH_TOKEN_ERROR]
+adminEventsEnabled: true
+adminEventsDetailsEnabled: false
+
+# Scopes demandes par les clients : ils ajoutent l'audience donation-api au token (DS11 pilote)
+clientScopes:
+  - name: "donation:read"
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "true", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: audience-donation-api
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config: { included.client.audience: donation-api, access.token.claim: "true", id.token.claim: "false", introspection.token.claim: "true" }
+  - name: "donation:write"
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "true", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: audience-donation-api
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config: { included.client.audience: donation-api, access.token.claim: "true", id.token.claim: "false", introspection.token.claim: "true" }
+
+clients:
+  # Resource server : porte les roles et sert d'audience, aucun flux
+  - clientId: donation-api
+    name: donation-api (resource server)
+    protocol: openid-connect
+    publicClient: false
+    standardFlowEnabled: false
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+  # BFF Next.js : authorization code + PKCE S256, confidentiel, back-channel logout
+  - clientId: donation-web
+    name: donation-web (Next.js BFF)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_WEB_CLIENT_SECRET)
+    standardFlowEnabled: true
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+    frontchannelLogout: false
+    fullScopeAllowed: false
+    redirectUris: ["$(env:DONATION_WEB_BASE_URL)/api/auth/callback/keycloak"]
+    webOrigins: []
+    attributes:
+      pkce.code.challenge.method: S256
+      post.logout.redirect.uris: "$(env:DONATION_WEB_BASE_URL)/"
+      backchannel.logout.url: "$(env:DONATION_WEB_BASE_URL)/api/auth/backchannel-logout"
+      backchannel.logout.session.required: "true"
+    defaultClientScopes: [basic, acr, profile, roles]
+    optionalClientScopes: ["donation:read", "donation:write"]
+  # Appels machine (futur inner-order-api) : client credentials, role agent, lecture seule
+  - clientId: donation-service
+    name: donation-service (client credentials)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_SERVICE_CLIENT_SECRET)
+    standardFlowEnabled: false
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: true
+    fullScopeAllowed: false
+    defaultClientScopes: [basic, roles]
+    optionalClientScopes: ["donation:read"]
+  # Tests Postman : actif en dev uniquement (DONATION_TESTS_CLIENT_ENABLED=false ailleurs)
+  - clientId: donation-tests
+    name: donation-tests (Postman, dev)
+    enabled: $(env:DONATION_TESTS_CLIENT_ENABLED)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_TESTS_CLIENT_SECRET)
+    standardFlowEnabled: true
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: true
+    fullScopeAllowed: false
+    redirectUris: ["https://oauth.pstmn.io/v1/callback"]
+    attributes:
+      pkce.code.challenge.method: S256
+    defaultClientScopes: [basic, acr, profile, roles]
+    optionalClientScopes: ["donation:read", "donation:write"]
+
+# Roles de l'API (DK2) : resource_access.donation-api.roles dans le token
+roles:
+  client:
+    donation-api:
+      - name: admin
+        description: Administration complete des donateurs et des dons
+      - name: agent
+        description: Gestion courante (lecture, creation), sans suppression
+      - name: donor
+        description: Donateur, acces a ses seules donnees (ABAC)
+
+# Moindre privilege : chaque client ne peut porter que ces roles dans ses tokens (fullScopeAllowed: false)
+clientScopeMappings:
+  donation-api:
+    - client: donation-web
+      roles: [admin, agent, donor]
+    - client: donation-service
+      roles: [agent]
+    - client: donation-tests
+      roles: [admin, agent, donor]
+
+# Comptes de service : roles attribues aux clients en client credentials
+users:
+  - username: service-account-donation-service
+    enabled: true
+    serviceAccountClientId: donation-service
+    clientRoles:
+      donation-api: [agent]
+  - username: service-account-donation-tests
+    enabled: true
+    serviceAccountClientId: donation-tests
+    clientRoles:
+      donation-api: [admin]
