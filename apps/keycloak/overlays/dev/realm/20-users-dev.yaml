@@ -10,7 +10,7 @@ users:
     firstName: Admin
     lastName: Test
     credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
-    clientRoles: { donation-api: [admin] }
+    realmRoles: [donation-admin]
   - username: agent.test
     enabled: true
     email: agent.test@example.test
@@ -18,7 +18,7 @@ users:
     firstName: Agent
     lastName: Test
     credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
-    clientRoles: { donation-api: [agent] }
+    realmRoles: [donation-agent]
   - username: donor.a
     enabled: true
     email: donor.a@example.test
@@ -26,7 +26,7 @@ users:
     firstName: Donor
     lastName: A
     credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
-    clientRoles: { donation-api: [donor] }
+    realmRoles: [donation-donor]
   - username: donor.b
     enabled: true
     email: donor.b@example.test
@@ -34,4 +34,4 @@ users:
     firstName: Donor
     lastName: B
     credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
-    clientRoles: { donation-api: [donor] }
+    realmRoles: [donation-donor]

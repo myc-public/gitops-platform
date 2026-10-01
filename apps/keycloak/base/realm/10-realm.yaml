@@ -111,36 +111,59 @@ clients:
     defaultClientScopes: [basic, acr, profile, roles]
     optionalClientScopes: ["donation:read", "donation:write"]
 
-# Roles de l'API (DK2) : resource_access.donation-api.roles dans le token
+# Modele C (ADR 01/10) :
+# - roles de CLIENT donation-api = PERMISSIONS, seules connues de l'API (resource_access.donation-api.roles), stables ;
+# - roles de REALM composites = roles metier = LA MATRICE (gouvernance centrale : toute evolution = PR sur ce fichier).
 roles:
   client:
     donation-api:
-      - name: admin
-        description: Administration complete des donateurs et des dons
-      - name: agent
-        description: Gestion courante (lecture, creation), sans suppression
-      - name: donor
-        description: Donateur, acces a ses seules donnees (ABAC)
+      - { name: "donor:create", description: Creer un donateur }
+      - { name: "donor:read", description: Lire un donateur }
+      - { name: "donor:list", description: Lister les donateurs }
+      - { name: "donor:update", description: Modifier un donateur }
+      - { name: "donor:delete", description: Supprimer un donateur (effacement RGPD) }
+      - { name: "donation:create", description: Creer un don }
+      - { name: "donation:read", description: Lire un don ou les dons d'un donateur }
+      - { name: "donation:list", description: Lister les dons }
+      - { name: "donation:update", description: Modifier un don (donnee financiere) }
+      - { name: "donation:delete", description: Supprimer un don (donnee financiere) }
+  realm:
+    - name: donation-admin
+      description: Administration complete des donateurs et des dons
+      composite: true
+      composites:
+        client:
+          donation-api: ["donor:create", "donor:read", "donor:list", "donor:update", "donor:delete",
+                         "donation:create", "donation:read", "donation:list", "donation:update", "donation:delete"]
+    - name: donation-agent
+      description: Gestion courante, sans suppression ni modification des dons
+      composite: true
+      composites:
+        client:
+          donation-api: ["donor:create", "donor:read", "donor:list", "donor:update",
+                         "donation:create", "donation:read", "donation:list"]
+    - name: donation-donor
+      description: Donateur - permissions ajoutees en K4 avec le controle du proprietaire (ABAC)
 
-# Moindre privilege : chaque client ne peut porter que ces roles dans ses tokens (fullScopeAllowed: false)
+# Moindre privilege : permissions que chaque client peut porter dans ses tokens (fullScopeAllowed: false)
 clientScopeMappings:
   donation-api:
     - client: donation-web
-      roles: [admin, agent, donor]
+      roles: ["donor:create", "donor:read", "donor:list", "donor:update", "donor:delete",
+              "donation:create", "donation:read", "donation:list", "donation:update", "donation:delete"]
     - client: donation-service
-      roles: [agent]
+      roles: ["donor:read", "donor:list", "donation:read", "donation:list"]
     - client: donation-tests
-      roles: [admin, agent, donor]
+      roles: ["donor:create", "donor:read", "donor:list", "donor:update", "donor:delete",
+              "donation:create", "donation:read", "donation:list", "donation:update", "donation:delete"]
 
-# Comptes de service : roles attribues aux clients en client credentials
+# Comptes de service : roles metier attribues aux clients en client credentials
 users:
   - username: service-account-donation-service
     enabled: true
     serviceAccountClientId: donation-service
-    clientRoles:
-      donation-api: [agent]
+    realmRoles: [donation-agent]
   - username: service-account-donation-tests
     enabled: true
     serviceAccountClientId: donation-tests
-    clientRoles:
-      donation-api: [admin]
+    realmRoles: [donation-admin]
