@@ -1,7 +1,9 @@
 # Keycloak de DEV LOCAL (lot K1) : jamais deploye. Source de verite du deploiement = apps/keycloak (Argo CD).
 # Meme realm que sur OpenShift : les fichiers de apps/keycloak sont montes tels quels (aucune copie).
 #   docker compose -f local/keycloak/compose.yaml --env-file local/keycloak/.env up -d
-#   Console admin : http://localhost:8180/admin (local uniquement) ; issuer : http://localhost:8180/realms/myc
+#   Console admin : http://localhost:8180/admin (local uniquement)
+#   Issuers : http://localhost:8180/realms/myc-customers (externes) et http://localhost:8180/realms/myc-internal (internes)
+#   Emails (verification, mot de passe oublie) : http://localhost:8025 (Mailpit)
 name: keycloak-local
 
 services:
@@ -64,21 +66,40 @@ services:
       KEYCLOAK_AVAILABILITYCHECK_TIMEOUT: 120s
       IMPORT_FILES_LOCATIONS: /config/*
       IMPORT_VARSUBSTITUTION_ENABLED: "true"
-      # Valeurs substituees dans les fichiers du realm
+      # Valeurs substituees dans les fichiers des realms
       DONATION_WEB_BASE_URL: http://localhost:3000
+      DONATION_BACKOFFICE_BASE_URL: http://localhost:3001
       DONATION_TESTS_CLIENT_ENABLED: "true"
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
       DONATION_WEB_CLIENT_SECRET: ${DONATION_WEB_CLIENT_SECRET:?DONATION_WEB_CLIENT_SECRET absent}
+      DONATION_BACKOFFICE_CLIENT_SECRET: ${DONATION_BACKOFFICE_CLIENT_SECRET:?DONATION_BACKOFFICE_CLIENT_SECRET absent - regenerer .env depuis .env.example}
       DONATION_SERVICE_CLIENT_SECRET: ${DONATION_SERVICE_CLIENT_SECRET:?DONATION_SERVICE_CLIENT_SECRET absent}
       DONATION_TESTS_CLIENT_SECRET: ${DONATION_TESTS_CLIENT_SECRET:?DONATION_TESTS_CLIENT_SECRET absent}
       TEST_USERS_PASSWORD: ${TEST_USERS_PASSWORD:?TEST_USERS_PASSWORD absent}
+      # Federation Google / Facebook (myc-customers) : desactivee tant que les identifiants OAuth ne sont pas fournis
+      GOOGLE_IDP_ENABLED: ${GOOGLE_IDP_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-non-configure}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-non-configure}
+      FACEBOOK_IDP_ENABLED: ${FACEBOOK_IDP_ENABLED:-false}
+      FACEBOOK_CLIENT_ID: ${FACEBOOK_CLIENT_ID:-non-configure}
+      FACEBOOK_CLIENT_SECRET: ${FACEBOOK_CLIENT_SECRET:-non-configure}
     volumes:
-      # Memes fichiers que le deploiement OpenShift, appliques dans l'ordre alphabetique (10 puis 20)
-      - ../../apps/keycloak/base/realm/10-realm.yaml:/config/10-realm.yaml:ro
-      - ../../apps/keycloak/overlays/dev/realm/20-users-dev.yaml:/config/20-users-dev.yaml:ro
+      # Memes fichiers que le deploiement OpenShift, appliques dans l'ordre alphabetique (10, 11, puis 20, 21)
+      - ../../apps/keycloak/base/realm/10-realm-customers.yaml:/config/10-realm-customers.yaml:ro
+      - ../../apps/keycloak/base/realm/11-realm-internal.yaml:/config/11-realm-internal.yaml:ro
+      - ../../apps/keycloak/overlays/dev/realm/20-users-customers-dev.yaml:/config/20-users-customers-dev.yaml:ro
+      - ../../apps/keycloak/overlays/dev/realm/21-users-internal-dev.yaml:/config/21-users-internal-dev.yaml:ro
     depends_on:
       keycloak:
         condition: service_healthy
     restart: "no"
+
+  # Serveur SMTP de dev : capture les emails de Keycloak (verification, mot de passe oublie) sans les envoyer
+  mailpit:
+    image: axllent/mailpit@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d   # v1.31
+    ports:
+      - "127.0.0.1:8025:8025"
 
 volumes:
   keycloak-db-data:
