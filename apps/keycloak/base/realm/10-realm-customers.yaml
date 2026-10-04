@@ -1,0 +1,217 @@
+# Realm myc-customers : utilisateurs EXTERNES (donateurs, beneficiaires) - ADR 02/10 (DI1).
+# Applique par keycloak-config-cli (idempotent). Variables d'environnement substituees (syntaxe dollar-parenthese env:NOM),
+# y compris dans les commentaires : ne jamais ecrire cette syntaxe dans un commentaire.
+# Clients, roles, client scopes et groupes sont geres EN ENTIER par keycloak-config-cli : ne les definir que dans ce fichier.
+# Autorisation (DI2) : Groupe -> Role metier (realm, composite) -> Permission (role du client donation-api).
+# Ce realm ne porte que des permissions "proprietaire" (suffixe :own) : un externe ne peut jamais recevoir un droit global.
+realm: myc-customers
+enabled: true
+displayName: MYC - Donateurs et beneficiaires
+sslRequired: external
+# Inscription libre, email = identifiant, email verifie (emails de dev : Mailpit)
+registrationAllowed: true
+registrationEmailAsUsername: true
+verifyEmail: true
+loginWithEmailAllowed: true
+duplicateEmailsAllowed: false
+resetPasswordAllowed: true
+rememberMe: true
+bruteForceProtected: true
+failureFactor: 5
+waitIncrementSeconds: 60
+maxFailureWaitSeconds: 900
+passwordPolicy: "length(12) and notUsername and notEmail"
+accessTokenLifespan: 300
+ssoSessionIdleTimeout: 1800
+ssoSessionMaxLifespan: 36000
+revokeRefreshToken: true
+refreshTokenMaxReuse: 0
+eventsEnabled: true
+eventsExpiration: 604800
+enabledEventTypes: [LOGIN, LOGIN_ERROR, LOGOUT, REGISTER, REGISTER_ERROR, CODE_TO_TOKEN, CODE_TO_TOKEN_ERROR, REFRESH_TOKEN_ERROR, IDENTITY_PROVIDER_FIRST_LOGIN]
+adminEventsEnabled: true
+adminEventsDetailsEnabled: false
+smtpServer:
+  host: $(env:SMTP_HOST)
+  port: $(env:SMTP_PORT)
+  from: no-reply@myc.local
+  fromDisplayName: MYC
+
+# keycloak-config-cli ne synchronise userProfile que si ce drapeau est present (Keycloak 26 l'active de toute facon)
+attributes:
+  userProfileEnabled: "true"
+
+# Profil utilisateur declaratif : party_id (identifiant metier de la personne) visible et modifiable
+# par l'administration SEULEMENT (jamais par l'utilisateur depuis "mon compte")
+userProfile:
+  attributes:
+    - name: username
+      displayName: "${username}"
+      validations: { length: { min: 3, max: 255 }, username-prohibited-characters: {}, up-username-not-idn-homograph: {} }
+      permissions: { view: [admin, user], edit: [admin, user] }
+    - name: email
+      displayName: "${email}"
+      validations: { email: {}, length: { max: 255 } }
+      required: { roles: [user] }
+      permissions: { view: [admin, user], edit: [admin, user] }
+    - name: firstName
+      displayName: "${firstName}"
+      validations: { length: { max: 255 }, person-name-prohibited-characters: {} }
+      required: { roles: [user] }
+      permissions: { view: [admin, user], edit: [admin, user] }
+    - name: lastName
+      displayName: "${lastName}"
+      validations: { length: { max: 255 }, person-name-prohibited-characters: {} }
+      required: { roles: [user] }
+      permissions: { view: [admin, user], edit: [admin, user] }
+    - name: party_id
+      displayName: Identifiant personne (party_id)
+      validations: { length: { max: 64 } }
+      permissions: { view: [admin], edit: [admin] }
+  groups:
+    - name: user-metadata
+      displayHeader: User metadata
+      displayDescription: Attributes, which refer to user metadata
+
+# Fournisseurs d'identite externes (DI1) : desactives tant que les identifiants OAuth ne sont pas fournis
+identityProviders:
+  - alias: google
+    providerId: google
+    displayName: Google
+    enabled: $(env:GOOGLE_IDP_ENABLED)
+    trustEmail: true
+    firstBrokerLoginFlowAlias: first broker login
+    config: { clientId: $(env:GOOGLE_CLIENT_ID), clientSecret: $(env:GOOGLE_CLIENT_SECRET), syncMode: IMPORT, defaultScope: "openid email profile" }
+  - alias: facebook
+    providerId: facebook
+    displayName: Facebook
+    enabled: $(env:FACEBOOK_IDP_ENABLED)
+    trustEmail: true
+    firstBrokerLoginFlowAlias: first broker login
+    config: { clientId: $(env:FACEBOOK_CLIENT_ID), clientSecret: $(env:FACEBOOK_CLIENT_SECRET), syncMode: IMPORT, defaultScope: "email public_profile" }
+
+# Tout nouvel utilisateur (inscription ou premiere connexion federee) rejoint /donateurs
+defaultGroups: ["/donateurs"]
+groups:
+  - name: donateurs
+    realmRoles: [donation-donor]
+  - name: beneficiaires
+    realmRoles: [beneficiary]
+
+# Contrat de claims (DI3) + scopes OAuth de l'API (porteurs de l'audience donation-api)
+clientScopes:
+  - name: myc-claims
+    description: Contrat de claims du SI (party_id, actor_type, permissions) - independant de l'IdP
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "false", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: party_id
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-attribute-mapper
+        config: { user.attribute: party_id, claim.name: party_id, jsonType.label: String, access.token.claim: "true", id.token.claim: "true", userinfo.token.claim: "true" }
+      - name: actor_type
+        protocol: openid-connect
+        protocolMapper: oidc-hardcoded-claim-mapper
+        config: { claim.name: actor_type, claim.value: external, jsonType.label: String, access.token.claim: "true", id.token.claim: "true", userinfo.token.claim: "false" }
+      - name: permissions
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-client-role-mapper
+        config: { usermodel.clientRoleMapping.clientId: donation-api, claim.name: permissions, multivalued: "true", jsonType.label: String, access.token.claim: "true", id.token.claim: "false", userinfo.token.claim: "false" }
+  - name: "donation:read"
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "true", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: audience-donation-api
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config: { included.client.audience: donation-api, access.token.claim: "true", id.token.claim: "false", introspection.token.claim: "true" }
+  - name: "donation:write"
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "true", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: audience-donation-api
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config: { included.client.audience: donation-api, access.token.claim: "true", id.token.claim: "false", introspection.token.claim: "true" }
+
+clients:
+  # Resource server : porte les permissions (proprietaire) et sert d'audience, aucun flux
+  - clientId: donation-api
+    name: donation-api (resource server)
+    protocol: openid-connect
+    publicClient: false
+    standardFlowEnabled: false
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+  # BFF Next.js (front donateurs) : authorization code + PKCE S256, confidentiel, back-channel logout
+  - clientId: donation-web
+    name: donation-web (Next.js BFF)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_WEB_CLIENT_SECRET)
+    standardFlowEnabled: true
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+    frontchannelLogout: false
+    fullScopeAllowed: false
+    redirectUris: ["$(env:DONATION_WEB_BASE_URL)/api/auth/callback/keycloak"]
+    webOrigins: []
+    attributes:
+      pkce.code.challenge.method: S256
+      post.logout.redirect.uris: "$(env:DONATION_WEB_BASE_URL)/"
+      backchannel.logout.url: "$(env:DONATION_WEB_BASE_URL)/api/auth/backchannel-logout"
+      backchannel.logout.session.required: "true"
+    defaultClientScopes: [basic, acr, profile, roles, myc-claims]
+    optionalClientScopes: ["donation:read", "donation:write"]
+  # Tests Postman (dev uniquement : DONATION_TESTS_CLIENT_ENABLED=false ailleurs)
+  - clientId: donation-tests
+    name: donation-tests (Postman, dev)
+    enabled: $(env:DONATION_TESTS_CLIENT_ENABLED)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_TESTS_CLIENT_SECRET)
+    standardFlowEnabled: true
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+    fullScopeAllowed: false
+    redirectUris: ["https://oauth.pstmn.io/v1/callback"]
+    attributes:
+      pkce.code.challenge.method: S256
+    defaultClientScopes: [basic, acr, profile, roles, myc-claims]
+    optionalClientScopes: ["donation:read", "donation:write"]
+
+roles:
+  # Permissions "proprietaire" de l'API (ABAC en K4c) : seules connues de l'API, stables
+  client:
+    donation-api:
+      - { name: "donor:create:own", description: "Creer son propre profil donateur (une fois, a l'inscription)" }
+      - { name: "donor:read:own", description: Lire son propre profil donateur }
+      - { name: "donation:create:own", description: Creer un don pour soi }
+      - { name: "donation:read:own", description: Lire un de ses dons }
+      - { name: "donation:list:own", description: Lister tous ses dons }
+  # Roles metier = la matrice des externes (gouvernance : PR sur ce fichier)
+  realm:
+    - name: donation-donor
+      description: Donateur - lit ses donnees, liste tous ses dons, cree des dons
+      composite: true
+      composites:
+        client:
+          donation-api: ["donor:create:own", "donor:read:own", "donation:create:own", "donation:read:own", "donation:list:own"]
+    - name: beneficiary
+      description: Beneficiaire - aucune permission sur donation-api (API beneficiaire a venir)
+
+# Moindre privilege : permissions que chaque client peut porter dans ses tokens (fullScopeAllowed: false)
+clientScopeMappings:
+  # Projection par defaut de Keycloak, a redeclarer : keycloak-config-cli gere les clientScopeMappings EN ENTIER,
+  # sans elle la console "mon compte" recoit un 401 (token sans audience account)
+  account:
+    - client: account-console
+      roles: [manage-account, view-groups]
+  donation-api:
+    - client: donation-web
+      roles: ["donor:create:own", "donor:read:own", "donation:create:own", "donation:read:own", "donation:list:own"]
+    - client: donation-tests
+      roles: ["donor:create:own", "donor:read:own", "donation:create:own", "donation:read:own", "donation:list:own"]

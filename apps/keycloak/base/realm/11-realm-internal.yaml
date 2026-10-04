@@ -1,0 +1,243 @@
+# Realm myc-internal : utilisateurs INTERNES (admin, agent, superviseur d'agents) - ADR 02/10 (DI1).
+# Applique par keycloak-config-cli (idempotent). Variables d'environnement substituees (syntaxe dollar-parenthese env:NOM),
+# y compris dans les commentaires : ne jamais ecrire cette syntaxe dans un commentaire.
+# Clients, roles, client scopes et groupes sont geres EN ENTIER par keycloak-config-cli : ne les definir que dans ce fichier.
+# Autorisation (DI2) : Groupe -> Role metier (realm, composite) -> Permission (role du client donation-api).
+# Ce realm ne porte que des permissions globales : jamais de permission "proprietaire" (:own).
+# Comptes crees dans Keycloak (pas d'inscription) ; federation AD plus tard (groupes conserves, party_id conserve).
+# MFA : desactivee pour l'instant, activee avec le front / BFF (lot K6).
+realm: myc-internal
+enabled: true
+displayName: MYC - Collaborateurs
+sslRequired: external
+registrationAllowed: false
+loginWithEmailAllowed: true
+duplicateEmailsAllowed: false
+resetPasswordAllowed: true
+bruteForceProtected: true
+failureFactor: 5
+waitIncrementSeconds: 60
+maxFailureWaitSeconds: 900
+passwordPolicy: "length(14) and notUsername and notEmail and passwordHistory(5)"
+accessTokenLifespan: 300
+ssoSessionIdleTimeout: 900
+ssoSessionMaxLifespan: 28800
+revokeRefreshToken: true
+refreshTokenMaxReuse: 0
+eventsEnabled: true
+eventsExpiration: 2592000
+enabledEventTypes: [LOGIN, LOGIN_ERROR, LOGOUT, CODE_TO_TOKEN, CODE_TO_TOKEN_ERROR, CLIENT_LOGIN, CLIENT_LOGIN_ERROR, REFRESH_TOKEN_ERROR, UPDATE_PASSWORD]
+adminEventsEnabled: true
+adminEventsDetailsEnabled: false
+smtpServer:
+  host: $(env:SMTP_HOST)
+  port: $(env:SMTP_PORT)
+  from: no-reply@myc.local
+  fromDisplayName: MYC
+
+# keycloak-config-cli ne synchronise userProfile que si ce drapeau est present (Keycloak 26 l'active de toute facon)
+attributes:
+  userProfileEnabled: "true"
+
+# Profil utilisateur declaratif : party_id non modifiable par l'utilisateur
+userProfile:
+  attributes:
+    - name: username
+      displayName: "${username}"
+      validations: { length: { min: 3, max: 255 }, username-prohibited-characters: {}, up-username-not-idn-homograph: {} }
+      permissions: { view: [admin, user], edit: [admin] }
+    - name: email
+      displayName: "${email}"
+      validations: { email: {}, length: { max: 255 } }
+      required: { roles: [user] }
+      permissions: { view: [admin, user], edit: [admin] }
+    - name: firstName
+      displayName: "${firstName}"
+      validations: { length: { max: 255 }, person-name-prohibited-characters: {} }
+      required: { roles: [user] }
+      permissions: { view: [admin, user], edit: [admin] }
+    - name: lastName
+      displayName: "${lastName}"
+      validations: { length: { max: 255 }, person-name-prohibited-characters: {} }
+      required: { roles: [user] }
+      permissions: { view: [admin, user], edit: [admin] }
+    - name: party_id
+      displayName: Identifiant personne (party_id)
+      validations: { length: { max: 64 } }
+      permissions: { view: [admin], edit: [admin] }
+  groups:
+    - name: user-metadata
+      displayHeader: User metadata
+      displayDescription: Attributes, which refer to user metadata
+
+# Groupes = organisation ; les sous-groupes heritent du role metier du groupe parent ; team_id = equipe (audit, K4d)
+groups:
+  - name: admins
+    realmRoles: [donation-admin]
+  - name: agents
+    realmRoles: [donation-agent]
+    subGroups:
+      - { name: casablanca, attributes: { team_id: [casablanca] } }
+      - { name: rabat, attributes: { team_id: [rabat] } }
+  - name: superviseurs
+    realmRoles: [donation-supervisor]
+    subGroups:
+      - { name: casablanca, attributes: { team_id: [casablanca] } }
+      - { name: rabat, attributes: { team_id: [rabat] } }
+
+clientScopes:
+  - name: myc-claims
+    description: Contrat de claims du SI (party_id, actor_type, permissions) - independant de l'IdP
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "false", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: party_id
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-attribute-mapper
+        config: { user.attribute: party_id, claim.name: party_id, jsonType.label: String, access.token.claim: "true", id.token.claim: "true", userinfo.token.claim: "true" }
+      - name: actor_type
+        protocol: openid-connect
+        protocolMapper: oidc-hardcoded-claim-mapper
+        config: { claim.name: actor_type, claim.value: internal, jsonType.label: String, access.token.claim: "true", id.token.claim: "true", userinfo.token.claim: "false" }
+      - name: permissions
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-client-role-mapper
+        config: { usermodel.clientRoleMapping.clientId: donation-api, claim.name: permissions, multivalued: "true", jsonType.label: String, access.token.claim: "true", id.token.claim: "false", userinfo.token.claim: "false" }
+  - name: "donation:read"
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "true", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: audience-donation-api
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config: { included.client.audience: donation-api, access.token.claim: "true", id.token.claim: "false", introspection.token.claim: "true" }
+  - name: "donation:write"
+    protocol: openid-connect
+    attributes: { include.in.token.scope: "true", display.on.consent.screen: "false" }
+    protocolMappers:
+      - name: audience-donation-api
+        protocol: openid-connect
+        protocolMapper: oidc-audience-mapper
+        config: { included.client.audience: donation-api, access.token.claim: "true", id.token.claim: "false", introspection.token.claim: "true" }
+
+clients:
+  - clientId: donation-api
+    name: donation-api (resource server)
+    protocol: openid-connect
+    publicClient: false
+    standardFlowEnabled: false
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+  # Futur front interne (back-office) : authorization code + PKCE S256, confidentiel
+  - clientId: donation-backoffice
+    name: donation-backoffice (front interne)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_BACKOFFICE_CLIENT_SECRET)
+    standardFlowEnabled: true
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: false
+    frontchannelLogout: false
+    fullScopeAllowed: false
+    redirectUris: ["$(env:DONATION_BACKOFFICE_BASE_URL)/api/auth/callback/keycloak"]
+    webOrigins: []
+    attributes:
+      pkce.code.challenge.method: S256
+      post.logout.redirect.uris: "$(env:DONATION_BACKOFFICE_BASE_URL)/"
+    defaultClientScopes: [basic, acr, profile, roles, myc-claims]
+    optionalClientScopes: ["donation:read", "donation:write"]
+  # Appels machine (futur inner-order-api) : client credentials, lecture seule
+  - clientId: donation-service
+    name: donation-service (client credentials)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_SERVICE_CLIENT_SECRET)
+    standardFlowEnabled: false
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: true
+    fullScopeAllowed: false
+    defaultClientScopes: [basic, roles, myc-claims]
+    optionalClientScopes: ["donation:read"]
+  # Tests Postman (dev uniquement : DONATION_TESTS_CLIENT_ENABLED=false ailleurs)
+  - clientId: donation-tests
+    name: donation-tests (Postman, dev)
+    enabled: $(env:DONATION_TESTS_CLIENT_ENABLED)
+    protocol: openid-connect
+    publicClient: false
+    secret: $(env:DONATION_TESTS_CLIENT_SECRET)
+    standardFlowEnabled: true
+    implicitFlowEnabled: false
+    directAccessGrantsEnabled: false
+    serviceAccountsEnabled: true
+    fullScopeAllowed: false
+    redirectUris: ["https://oauth.pstmn.io/v1/callback"]
+    attributes:
+      pkce.code.challenge.method: S256
+    defaultClientScopes: [basic, acr, profile, roles, myc-claims]
+    optionalClientScopes: ["donation:read", "donation:write"]
+
+roles:
+  # Permissions globales de l'API : seules connues de l'API, stables
+  client:
+    donation-api:
+      - { name: "donor:create", description: Creer un donateur }
+      - { name: "donor:read", description: Lire un donateur }
+      - { name: "donor:list", description: Lister les donateurs }
+      - { name: "donor:update", description: Modifier un donateur }
+      - { name: "donor:delete", description: Supprimer un donateur (effacement RGPD) }
+      - { name: "donation:create", description: Creer un don }
+      - { name: "donation:read", description: Lire un don ou les dons d'un donateur }
+      - { name: "donation:list", description: Lister les dons }
+      - { name: "donation:update", description: Modifier un don (donnee financiere) }
+      - { name: "donation:delete", description: Supprimer un don (donnee financiere) }
+  # Roles metier = la matrice des internes (gouvernance : PR sur ce fichier)
+  realm:
+    - name: donation-admin
+      description: Administration complete des donateurs et des dons
+      composite: true
+      composites:
+        client:
+          donation-api: ["donor:create", "donor:read", "donor:list", "donor:update", "donor:delete",
+                         "donation:create", "donation:read", "donation:list", "donation:update", "donation:delete"]
+    - name: donation-agent
+      description: Gestion courante, sans suppression ni modification des dons
+      composite: true
+      composites:
+        client:
+          donation-api: ["donor:create", "donor:read", "donor:list", "donor:update",
+                         "donation:create", "donation:read", "donation:list"]
+    - name: donation-supervisor
+      description: Superviseur d'agents - droits d'un agent ; lecture des actions de son equipe et escalade a venir (K4d)
+      composite: true
+      composites:
+        realm: [donation-agent]
+
+clientScopeMappings:
+  # Projection par defaut de Keycloak, a redeclarer : keycloak-config-cli gere les clientScopeMappings EN ENTIER,
+  # sans elle la console "mon compte" recoit un 401 (token sans audience account)
+  account:
+    - client: account-console
+      roles: [manage-account, view-groups]
+  donation-api:
+    - client: donation-backoffice
+      roles: ["donor:create", "donor:read", "donor:list", "donor:update", "donor:delete",
+              "donation:create", "donation:read", "donation:list", "donation:update", "donation:delete"]
+    - client: donation-service
+      roles: ["donor:read", "donor:list", "donation:read", "donation:list"]
+    - client: donation-tests
+      roles: ["donor:create", "donor:read", "donor:list", "donor:update", "donor:delete",
+              "donation:create", "donation:read", "donation:list", "donation:update", "donation:delete"]
+
+# Comptes de service : seule exception autorisee au lien utilisateur -> role (pas de groupe pour un service)
+users:
+  - username: service-account-donation-service
+    enabled: true
+    serviceAccountClientId: donation-service
+    realmRoles: [donation-agent]
+  - username: service-account-donation-tests
+    enabled: true
+    serviceAccountClientId: donation-tests
+    realmRoles: [donation-admin]

@@ -1,0 +1,42 @@
+# Utilisateurs internes de test - overlay dev UNIQUEMENT (jamais en uat / preprod / prod).
+# Regle DI2 : appartenance a un groupe, jamais de role direct. party_id fixe (identifiant metier de la personne).
+# Mot de passe commun : TEST_USERS_PASSWORD (keycloak-secret, hors Git ; 14 caracteres minimum, politique du realm).
+# Uniquement des users : ne jamais definir clients, roles, groupes ni clientScopes ici (geres par 11-realm-internal.yaml).
+realm: myc-internal
+users:
+  - username: admin.test
+    enabled: true
+    email: admin.test@example.test
+    emailVerified: true
+    firstName: Admin
+    lastName: Test
+    attributes: { party_id: ["fe8373eb-32ee-4255-99aa-fa86bf6a6e00"] }
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    groups: ["/admins"]
+  - username: agent.casa
+    enabled: true
+    email: agent.casa@example.test
+    emailVerified: true
+    firstName: Agent
+    lastName: Casablanca
+    attributes: { party_id: ["370a0bd8-b92c-454b-8313-30ad86f96899"] }
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    groups: ["/agents/casablanca"]
+  - username: agent.rabat
+    enabled: true
+    email: agent.rabat@example.test
+    emailVerified: true
+    firstName: Agent
+    lastName: Rabat
+    attributes: { party_id: ["b59aeeb2-1c37-41ec-9857-f42c06fc03df"] }
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    groups: ["/agents/rabat"]
+  - username: superviseur.casa
+    enabled: true
+    email: superviseur.casa@example.test
+    emailVerified: true
+    firstName: Superviseur
+    lastName: Casablanca
+    attributes: { party_id: ["9620e210-d74f-4dc3-9f42-b4102f02a703"] }
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    groups: ["/superviseurs/casablanca"]
