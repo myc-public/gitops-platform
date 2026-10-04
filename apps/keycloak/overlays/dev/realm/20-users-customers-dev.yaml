@@ -1,0 +1,33 @@
+# Utilisateurs externes de test - overlay dev UNIQUEMENT (jamais en uat / preprod / prod).
+# Regle DI2 : appartenance a un groupe, jamais de role direct. party_id fixe (identifiant metier de la personne).
+# Email = identifiant (registrationEmailAsUsername). Mot de passe commun : TEST_USERS_PASSWORD (keycloak-secret, hors Git).
+# Uniquement des users : ne jamais definir clients, roles, groupes ni clientScopes ici (geres par 10-realm-customers.yaml).
+realm: myc-customers
+users:
+  - username: donor.a@example.test
+    enabled: true
+    email: donor.a@example.test
+    emailVerified: true
+    firstName: Donor
+    lastName: A
+    attributes: { party_id: ["8f098e43-e3c0-4143-aac7-dc0a9a7bffbd"] }
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    groups: ["/donateurs"]
+  - username: donor.b@example.test
+    enabled: true
+    email: donor.b@example.test
+    emailVerified: true
+    firstName: Donor
+    lastName: B
+    attributes: { party_id: ["f57956a6-0b4a-4782-a056-9b5dd8cab66a"] }
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    groups: ["/donateurs"]
+  - username: benef.a@example.test
+    enabled: true
+    email: benef.a@example.test
+    emailVerified: true
+    firstName: Benef
+    lastName: A
+    attributes: { party_id: ["58316e83-6444-4023-b392-ed4cd6c31eb6"] }
+    credentials: [{ type: password, value: $(env:TEST_USERS_PASSWORD), temporary: false }]
+    groups: ["/beneficiaires"]

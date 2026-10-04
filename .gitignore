@@ -50,3 +50,5 @@ docs
 bootstrap/secrets/**/*.yaml
 !bootstrap/secrets/**/*.example.yaml
 donation-api-db-secret.dev.yaml
+# Dev local : secrets des Compose
+local/**/.env
