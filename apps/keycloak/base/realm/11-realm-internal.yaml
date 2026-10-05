@@ -87,10 +87,20 @@ groups:
 
 clientScopes:
   - name: myc-claims
-    description: Contrat de claims du SI (party_id, actor_type, permissions) - independant de l'IdP
+    description: Contrat de claims du SI (party_id, actor_type, permissions, team_id, preferred_username) - independant de l'IdP
     protocol: openid-connect
     attributes: { include.in.token.scope: "false", display.on.consent.screen: "false" }
     protocolMappers:
+      # team_id : attribut des sous-groupes (agents/casablanca...), remonte par agregation ; absent pour un admin (audit, K4d)
+      - name: team_id
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-attribute-mapper
+        config: { user.attribute: team_id, claim.name: team_id, jsonType.label: String, aggregate.attrs: "true", multivalued: "false", access.token.claim: "true", id.token.claim: "false", userinfo.token.claim: "false" }
+      # preferred_username dans le token d'acces quel que soit le scope profile : identite lisible de l'auteur (audit, K4d)
+      - name: preferred_username
+        protocol: openid-connect
+        protocolMapper: oidc-usermodel-attribute-mapper
+        config: { user.attribute: username, claim.name: preferred_username, jsonType.label: String, access.token.claim: "true", id.token.claim: "false", userinfo.token.claim: "false" }
       - name: party_id
         protocol: openid-connect
         protocolMapper: oidc-usermodel-attribute-mapper
