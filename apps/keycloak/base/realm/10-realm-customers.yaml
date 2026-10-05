@@ -163,7 +163,8 @@ clients:
       post.logout.redirect.uris: "$(env:DONATION_WEB_BASE_URL)/"
       backchannel.logout.url: "$(env:DONATION_WEB_BASE_URL)/api/auth/backchannel-logout"
       backchannel.logout.session.required: "true"
-    defaultClientScopes: [basic, acr, profile, roles, myc-claims]
+    # email (claim OIDC standard, verifie a l'inscription) : source de l'email du profil donateur (K4c, DC2)
+    defaultClientScopes: [basic, acr, profile, email, roles, myc-claims]
     optionalClientScopes: ["donation:read", "donation:write"]
   # Tests Postman (dev uniquement : DONATION_TESTS_CLIENT_ENABLED=false ailleurs)
   - clientId: donation-tests
@@ -180,7 +181,8 @@ clients:
     redirectUris: ["https://oauth.pstmn.io/v1/callback"]
     attributes:
       pkce.code.challenge.method: S256
-    defaultClientScopes: [basic, acr, profile, roles, myc-claims]
+    # email (claim OIDC standard, verifie a l'inscription) : source de l'email du profil donateur (K4c, DC2)
+    defaultClientScopes: [basic, acr, profile, email, roles, myc-claims]
     optionalClientScopes: ["donation:read", "donation:write"]
 
 roles:
