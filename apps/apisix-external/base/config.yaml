@@ -1,0 +1,31 @@
+# APISIX externe (K5) : seul point d'entree Internet. Mode autonome : routes dans apisix.yaml (pas d'etcd,
+# pas d'API d'administration). Image apisix-coraza (images/apisix-coraza) : WAF Coraza en plugin wasm.
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+apisix:
+  node_listen:
+    - 9080
+  ssl:
+    enable: true
+    listen:
+      - port: 9443
+wasm:
+  plugins:
+    - name: coraza-filter
+      priority: 7999
+      file: /usr/local/apisix/proxywasm/coraza-proxy-wasm.wasm
+nginx_config:
+  # Une VM wasm (WAF) par worker : 2 workers = ~285 Mo au lieu de ~890 Mo sur 8 coeurs (ADR 07/10).
+  # Plus de trafic = plus d'instances, pas plus de workers.
+  worker_processes: 2
+  error_log_level: warn
+  # Variables lues par apisix.yaml (${{...}} et $env://)
+  envs:
+    - PUBLIC_URL
+    - KEYCLOAK_UPSTREAM
+    - APISIX_INTERNAL_UPSTREAM
+    - HSTS_MAX_AGE
+    - TLS_CERT
+    - TLS_KEY

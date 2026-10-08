@@ -1,0 +1,16 @@
+# APISIX interne (K5) : validation des tokens (JWKS) et des scopes avant l'API. Jamais expose hors du cluster.
+# Mode autonome : routes dans apisix.yaml (pas d'etcd, pas d'API d'administration).
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+apisix:
+  node_listen:
+    - 9080
+nginx_config:
+  worker_processes: 2
+  error_log_level: warn
+  envs:
+    - PUBLIC_URL
+    - KEYCLOAK_INTERNAL_URL
+    - DONATION_API_UPSTREAM

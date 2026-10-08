@@ -1,0 +1,175 @@
+# APISIX interne (K5, D5-4 / D5-5) : valide le token (signature par JWKS, emetteur, expiration) et le scope
+# avant l'API. L'API revalide toujours le token et decide des permissions fines (DS7, modele C).
+# Deux emetteurs (myc-internal, myc-customers) : une route par realm et par type d'acces ; filter_func aiguille
+# sur l'iss LU SANS VERIFICATION (routage seulement), la signature est verifiee par openid-connect du realm vise
+# (spike 07/10 : token falsifie, iss d'un autre realm, signature croisee -> 401).
+# Variables : PUBLIC_URL (iss des tokens), KEYCLOAK_INTERNAL_URL (decouverte / JWKS), DONATION_API_UPSTREAM.
+
+routes:
+  - id: api-myc-internal-lecture
+    uri: /api/v1/*
+    methods: ["GET", "HEAD"]
+    priority: 10
+    filter_func: |
+        function(vars)
+          local h = vars.http_authorization
+          if not h then return false end
+          local tok = h:match("^[Bb]earer%s+(.+)$")
+          if not tok then return false end
+          local p = tok:match("^[^.]+%.([^.]+)%.")
+          if not p then return false end
+          p = p:gsub("-", "+"):gsub("_", "/")
+          if #p % 4 > 0 then p = p .. string.rep("=", 4 - #p % 4) end
+          local raw = ngx.decode_base64(p)
+          local claims = raw and require("cjson.safe").decode(raw)
+          return type(claims) == "table" and claims.iss == "${{PUBLIC_URL}}/realms/myc-internal"
+        end
+    plugins:
+      openid-connect:
+        # bearer_only + use_jwks : validation locale par JWKS, sans introspection (le secret n'est pas utilise)
+        client_id: donation-api
+        client_secret: non-utilise-validation-jwks
+        discovery: "${{KEYCLOAK_INTERNAL_URL}}/realms/myc-internal/.well-known/openid-configuration"
+        bearer_only: true
+        use_jwks: true
+        required_scopes: ["donation:read"]
+        # Le token reste dans Authorization (l'API le revalide) ; pas de copie dans d'autres en-tetes
+        set_access_token_header: false
+        set_id_token_header: false
+        set_userinfo_header: false
+    upstream:
+      type: roundrobin
+      nodes:
+        "${{DONATION_API_UPSTREAM}}": 1
+
+  - id: api-myc-internal-ecriture
+    uri: /api/v1/*
+    methods: ["POST", "PUT", "PATCH", "DELETE"]
+    priority: 10
+    filter_func: |
+        function(vars)
+          local h = vars.http_authorization
+          if not h then return false end
+          local tok = h:match("^[Bb]earer%s+(.+)$")
+          if not tok then return false end
+          local p = tok:match("^[^.]+%.([^.]+)%.")
+          if not p then return false end
+          p = p:gsub("-", "+"):gsub("_", "/")
+          if #p % 4 > 0 then p = p .. string.rep("=", 4 - #p % 4) end
+          local raw = ngx.decode_base64(p)
+          local claims = raw and require("cjson.safe").decode(raw)
+          return type(claims) == "table" and claims.iss == "${{PUBLIC_URL}}/realms/myc-internal"
+        end
+    plugins:
+      openid-connect:
+        # bearer_only + use_jwks : validation locale par JWKS, sans introspection (le secret n'est pas utilise)
+        client_id: donation-api
+        client_secret: non-utilise-validation-jwks
+        discovery: "${{KEYCLOAK_INTERNAL_URL}}/realms/myc-internal/.well-known/openid-configuration"
+        bearer_only: true
+        use_jwks: true
+        required_scopes: ["donation:write"]
+        # Le token reste dans Authorization (l'API le revalide) ; pas de copie dans d'autres en-tetes
+        set_access_token_header: false
+        set_id_token_header: false
+        set_userinfo_header: false
+    upstream:
+      type: roundrobin
+      nodes:
+        "${{DONATION_API_UPSTREAM}}": 1
+
+  - id: api-myc-customers-lecture
+    uri: /api/v1/*
+    methods: ["GET", "HEAD"]
+    priority: 10
+    filter_func: |
+        function(vars)
+          local h = vars.http_authorization
+          if not h then return false end
+          local tok = h:match("^[Bb]earer%s+(.+)$")
+          if not tok then return false end
+          local p = tok:match("^[^.]+%.([^.]+)%.")
+          if not p then return false end
+          p = p:gsub("-", "+"):gsub("_", "/")
+          if #p % 4 > 0 then p = p .. string.rep("=", 4 - #p % 4) end
+          local raw = ngx.decode_base64(p)
+          local claims = raw and require("cjson.safe").decode(raw)
+          return type(claims) == "table" and claims.iss == "${{PUBLIC_URL}}/realms/myc-customers"
+        end
+    plugins:
+      openid-connect:
+        # bearer_only + use_jwks : validation locale par JWKS, sans introspection (le secret n'est pas utilise)
+        client_id: donation-api
+        client_secret: non-utilise-validation-jwks
+        discovery: "${{KEYCLOAK_INTERNAL_URL}}/realms/myc-customers/.well-known/openid-configuration"
+        bearer_only: true
+        use_jwks: true
+        required_scopes: ["donation:read"]
+        # Le token reste dans Authorization (l'API le revalide) ; pas de copie dans d'autres en-tetes
+        set_access_token_header: false
+        set_id_token_header: false
+        set_userinfo_header: false
+    upstream:
+      type: roundrobin
+      nodes:
+        "${{DONATION_API_UPSTREAM}}": 1
+
+  - id: api-myc-customers-ecriture
+    uri: /api/v1/*
+    methods: ["POST", "PUT", "PATCH", "DELETE"]
+    priority: 10
+    filter_func: |
+        function(vars)
+          local h = vars.http_authorization
+          if not h then return false end
+          local tok = h:match("^[Bb]earer%s+(.+)$")
+          if not tok then return false end
+          local p = tok:match("^[^.]+%.([^.]+)%.")
+          if not p then return false end
+          p = p:gsub("-", "+"):gsub("_", "/")
+          if #p % 4 > 0 then p = p .. string.rep("=", 4 - #p % 4) end
+          local raw = ngx.decode_base64(p)
+          local claims = raw and require("cjson.safe").decode(raw)
+          return type(claims) == "table" and claims.iss == "${{PUBLIC_URL}}/realms/myc-customers"
+        end
+    plugins:
+      openid-connect:
+        # bearer_only + use_jwks : validation locale par JWKS, sans introspection (le secret n'est pas utilise)
+        client_id: donation-api
+        client_secret: non-utilise-validation-jwks
+        discovery: "${{KEYCLOAK_INTERNAL_URL}}/realms/myc-customers/.well-known/openid-configuration"
+        bearer_only: true
+        use_jwks: true
+        required_scopes: ["donation:write"]
+        # Le token reste dans Authorization (l'API le revalide) ; pas de copie dans d'autres en-tetes
+        set_access_token_header: false
+        set_id_token_header: false
+        set_userinfo_header: false
+    upstream:
+      type: roundrobin
+      nodes:
+        "${{DONATION_API_UPSTREAM}}": 1
+
+  # Pre-vol CORS (sans token par nature) : transmis a l'API, qui applique sa politique CORS (fermee)
+  - id: api-preflight-cors
+    uri: /api/v1/*
+    methods: ["OPTIONS"]
+    priority: 5
+    upstream:
+      type: roundrobin
+      nodes:
+        "${{DONATION_API_UPSTREAM}}": 1
+
+  # Repli : pas de token, ou emetteur inconnu -> 401 sans atteindre l'API
+  - id: api-sans-emetteur-connu
+    uri: /api/v1/*
+    priority: 0
+    plugins:
+      mocking:
+        response_status: 401
+        content_type: application/json
+        # Meme defi que l'API (RFC 6750)
+        response_headers:
+          WWW-Authenticate: Bearer
+        response_example: '{"type":"/problem/security/unauthorized","title":"Unauthorized","status":401,"detail":"Token absent ou emetteur non reconnu"}'
+#END
