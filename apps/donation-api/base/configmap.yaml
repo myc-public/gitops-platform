@@ -4,6 +4,9 @@ metadata:
   name: donation-api-config
   labels:
     app.kubernetes.io/name: donation-api
+  annotations:
+    # Avant MySQL (vague -1) qui lit DB_NAME : sinon blocage au premier deploiement
+    argocd.argoproj.io/sync-wave: "-2"
 data:
   DB_HOST: "donation-api-mysql"
   DB_PORT: "3306"
