@@ -1,0 +1,35 @@
+# Surcharge du Compose de l'API (inner-donation-api/local/compose.yaml) pour le mode pile : API conteneurisee
+# (jar de mvn package, meme Dockerfile que la CI), aucun port publie, variables de la pile (pas le .env du mode dev).
+services:
+  donation-api-mysql:
+    ports: !reset []
+    networks: [data-api]
+  donation-api:
+    profiles: !reset []
+    env_file: !reset []
+    image: donation-api:local
+    environment:
+      DB_HOST: donation-api-mysql
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:?DB_NAME absent}
+      DB_USER: ${DB_USER:?DB_USER absent}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD absent}
+      MANAGEMENT_ADMIN_USER: ${MANAGEMENT_ADMIN_USER:?MANAGEMENT_ADMIN_USER absent}
+      MANAGEMENT_ADMIN_PWD: ${MANAGEMENT_ADMIN_PWD:?MANAGEMENT_ADMIN_PWD absent}
+      MANAGEMENT_VIEWER_USER: ${MANAGEMENT_VIEWER_USER:?MANAGEMENT_VIEWER_USER absent}
+      MANAGEMENT_VIEWER_PWD: ${MANAGEMENT_VIEWER_PWD:?MANAGEMENT_VIEWER_PWD absent}
+      # iss public (D5-2) ; cles lues en interne, sans passer par les passerelles
+      OIDC_INTERNAL_ISSUER_URI: ${PUBLIC_URL}/realms/myc-internal
+      OIDC_INTERNAL_JWK_SET_URI: http://keycloak:8080/realms/myc-internal/protocol/openid-connect/certs
+      OIDC_CUSTOMERS_ISSUER_URI: ${PUBLIC_URL}/realms/myc-customers
+      OIDC_CUSTOMERS_JWK_SET_URI: http://keycloak:8080/realms/myc-customers/protocol/openid-connect/certs
+    ports: !reset []
+    networks: [api, idp, data-api]
+
+networks:
+  api:
+    name: donation-pile-api
+  idp:
+    name: donation-pile-idp
+  data-api:
+    name: donation-pile-data-api

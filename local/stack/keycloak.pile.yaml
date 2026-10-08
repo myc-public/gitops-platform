@@ -1,0 +1,22 @@
+# Surcharge du Compose Keycloak (local/keycloak/compose.yaml) pour le mode pile : aucun port publie,
+# URL publique = APISIX externe (iss des tokens), appels internes par http://keycloak:8080 (backchannel dynamique).
+services:
+  keycloak-db:
+    networks: [data-idp]
+  keycloak:
+    ports: !reset []
+    environment:
+      KC_HOSTNAME: ${PUBLIC_URL}
+      KC_PROXY_HEADERS: xforwarded
+    networks: [idp, data-idp]
+  keycloak-config:
+    networks: [idp]
+  mailpit:
+    ports: !reset []
+    networks: [idp]
+
+networks:
+  idp:
+    name: donation-pile-idp
+  data-idp:
+    name: donation-pile-data-idp

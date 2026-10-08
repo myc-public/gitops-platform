@@ -1,0 +1,68 @@
+# APISIX externe (K5, D5-6 a D5-8) : TLS, WAF, liste blanche de chemins, limitation par IP, en-tetes de securite.
+# Aucune validation de token ici (APISIX interne + API). Tout chemin absent de la liste repond 404.
+# Variables : PUBLIC_URL, KEYCLOAK_UPSTREAM, APISIX_INTERNAL_UPSTREAM, HSTS_MAX_AGE, TLS_CERT / TLS_KEY (local).
+
+global_rules:
+  - id: securite-bordure
+    plugins:
+      # WAF : OWASP CRS, paranoia 1, blocage (403) ; @recommended-conf active l'inspection des corps de requete
+      coraza-filter:
+        conf:
+          directives_map:
+            default:
+              - Include @recommended-conf
+              - SecRuleEngine On
+              - Include @crs-setup-conf
+              # API REST : PUT / PATCH / DELETE autorises (CRS n'autorise par defaut que GET, HEAD, POST, OPTIONS)
+              - SecAction "id:900200,phase:1,nolog,pass,t:none,setvar:'tx.allowed_methods=GET HEAD POST OPTIONS PUT PATCH DELETE'"
+              - Include @owasp_crs/*.conf
+          default_directives: default
+      # 20 req/s par IP, rafale 40, au-dela 429 (derriere un routeur : cle a revoir avec real-ip, deploiement OpenShift)
+      limit-req:
+        rate: 20
+        burst: 40
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+        nodelay: true
+      request-id:
+        header_name: X-Request-Id
+        include_in_response: true
+      response-rewrite:
+        headers:
+          set:
+            # HSTS : 0 en local (sinon le navigateur force https sur tous les ports de localhost), 1 an sur OpenShift
+            Strict-Transport-Security: "max-age=${{HSTS_MAX_AGE}}"
+            X-Content-Type-Options: nosniff
+            # SAMEORIGIN (pas DENY) : Keycloak utilise des iframes de meme origine (verification de session)
+            X-Frame-Options: SAMEORIGIN
+            Referrer-Policy: strict-origin-when-cross-origin
+
+routes:
+  # Keycloak : pages de login et endpoints OIDC publics des deux realms ; jamais /admin ni le realm master
+  - id: keycloak-public
+    uris:
+      - /realms/myc-internal/*
+      - /realms/myc-customers/*
+      - /resources/*
+    upstream:
+      type: roundrobin
+      pass_host: pass
+      nodes:
+        "${{KEYCLOAK_UPSTREAM}}": 1
+
+  # PROVISOIRE (K5) : API pour Postman, clients machine et partenaires ; maintenue ou fermee en K6 (BFF)
+  - id: api-v1
+    uri: /api/v1/*
+    upstream:
+      type: roundrobin
+      nodes:
+        "${{APISIX_INTERNAL_UPSTREAM}}": 1
+
+# TLS local (certificat auto-signe, jamais commite) ; sur OpenShift, TLS termine par la Route (variables absentes)
+ssls:
+  - id: tls-public
+    snis: ["localhost"]
+    cert: $env://TLS_CERT
+    key: $env://TLS_KEY
+#END
