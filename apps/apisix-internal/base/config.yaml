@@ -7,6 +7,10 @@ deployment:
 apisix:
   node_listen:
     - 9080
+  # Sondes (OpenShift) : /status/ready = routes chargees ; port interne au pod (ni Service, ni port publie)
+  status:
+    ip: 0.0.0.0
+    port: 7085
 nginx_config:
   worker_processes: 2
   error_log_level: warn
