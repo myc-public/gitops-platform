@@ -22,3 +22,6 @@ spec:
     - { group: "", kind: PersistentVolumeClaim }
     - { group: route.openshift.io, kind: Route }
     - { group: autoscaling, kind: HorizontalPodAutoscaler }
+    # Import des realms Keycloak (hook PostSync) et isolation reseau (O8)
+    - { group: batch, kind: Job }
+    - { group: networking.k8s.io, kind: NetworkPolicy }

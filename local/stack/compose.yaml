@@ -1,0 +1,66 @@
+# Mode PILE (K5, D5-1) : toute la chaine dans Docker, seul le port 8443 (TLS) est publie sur la machine.
+# Navigateur / Postman -> APISIX externe (WAF) -> APISIX interne (JWT, scopes) -> donation-api -> MySQL
+# Reprend les Compose de Keycloak et de l'API SANS les recopier (include + surcharges *.pile.yaml) ;
+# reseaux cloisonnes = NetworkPolicy d'OpenShift ; donnees separees du mode dev (volumes propres a la pile).
+# Prerequis et commandes : README.md (certificat local, mvn package, demarrage).
+name: donation-pile
+
+include:
+  - path: [../keycloak/compose.yaml, keycloak.pile.yaml]
+    env_file: .env
+  - path: [../../../inner-donation-api/local/compose.yaml, api.pile.yaml]
+    env_file: .env
+
+services:
+  apisix-ext:
+    # Image du WAF (D5-10) : meme Dockerfile que la CI
+    build: ../../images/apisix-coraza
+    image: apisix-coraza:local
+    # Le certificat local est passe a APISIX par variables ($env://), jamais ecrit dans apisix.yaml
+    entrypoint: ["sh", "-c", "export TLS_CERT=\"$$(cat /tls/tls.crt)\" TLS_KEY=\"$$(cat /tls/tls.key)\" && exec /docker-entrypoint.sh docker-start"]
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL absent - copier .env.example en .env}
+      KEYCLOAK_UPSTREAM: keycloak:8080
+      APISIX_INTERNAL_UPSTREAM: apisix-int:9080
+      HSTS_MAX_AGE: ${HSTS_MAX_AGE:-0}
+    volumes:
+      - ../../apps/apisix-external/base/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ../../apps/apisix-external/base/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ./tls:/tls:ro
+    ports:
+      - "127.0.0.1:${PILE_HTTPS_PORT:-8443}:9443"
+    # PROVISOIRE (route /api/v1/**) : internal ; front reserve a Next.js (K6)
+    networks: [edge, front, internal, idp]
+    depends_on: [apisix-int, keycloak]
+
+  apisix-int:
+    # APISIX 3.19.0-debian, epingle par digest (pas de WAF ici)
+    image: apache/apisix@sha256:9a7e45dc943fbf10ec916d1232bae4cda9302ae28a4696cfb83c2da01d261141
+    environment:
+      PUBLIC_URL: ${PUBLIC_URL}
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      DONATION_API_UPSTREAM: donation-api:8080
+    volumes:
+      - ../../apps/apisix-internal/base/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ../../apps/apisix-internal/base/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+    networks: [internal, api, idp]
+    depends_on: [donation-api, keycloak]
+
+# Un reseau par lien autorise (equivalent local des NetworkPolicy) :
+#   edge     : entree publique (APISIX externe, seul port publie)
+#   front    : APISIX externe <-> Next.js (K6)
+#   internal : Next.js (K6) et APISIX externe (route provisoire) -> APISIX interne
+#   api      : APISIX interne -> donation-api
+#   idp      : Keycloak <- APISIX externe (login), APISIX interne et API (JWKS), keycloak-config, Mailpit
+#   data-api / data-idp : chaque base n'est joignable que par son service
+networks:
+  edge:
+    name: donation-pile-edge
+  front:
+    name: donation-pile-front
+  internal:
+    name: donation-pile-internal
+  api:
+    name: donation-pile-api
+  idp:
+    name: donation-pile-idp

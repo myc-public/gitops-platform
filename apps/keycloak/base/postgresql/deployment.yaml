@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-db
+  labels:
+    app.kubernetes.io/name: keycloak-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: identity
+  annotations:
+    # Vague -1 : la base est Healthy avant Keycloak (vague 0)
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  replicas: 1
+  # Recreate : volume RWO, jamais deux postgres sur le meme repertoire de donnees
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak-db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak-db
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: postgresql
+          # Image Red Hat (compatible UID aleatoire OpenShift), epinglee par digest : meme image qu'en local
+          image: quay.io/sclorg/postgresql-16-c9s@sha256:b508e74304788fb4a5a2af76d8d013f20a18ee38bff3d24a705d7b730b8c0a30
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRESQL_DATABASE
+              value: keycloak
+            # Meme secret que Keycloak (cree hors Git) : une seule source de verite pour les identifiants
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef: { name: keycloak-db-secret, key: KC_DB_USERNAME }
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: keycloak-db-secret, key: KC_DB_PASSWORD }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pgsql/data
+          readinessProbe:
+            exec:
+              command: [/bin/sh, -c, 'pg_isready -h 127.0.0.1 -U "$POSTGRESQL_USER" -d keycloak']
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            # Vivant = le port repond : ne depend pas des identifiants
+            tcpSocket: { port: postgresql }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: keycloak-db-data

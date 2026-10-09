@@ -34,3 +34,10 @@ data:
     - apiGroups: [autoscaling]
       kinds: [HorizontalPodAutoscaler]
       clusters: ["https://api.*:6443"]
+    # Import des realms Keycloak (hook PostSync) et isolation reseau (O8)
+    - apiGroups: [batch]
+      kinds: [Job]
+      clusters: ["https://api.*:6443"]
+    - apiGroups: [networking.k8s.io]
+      kinds: [NetworkPolicy]
+      clusters: ["https://api.*:6443"]

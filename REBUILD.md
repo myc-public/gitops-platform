@@ -54,10 +54,15 @@ ocs get ingresses.config/cluster -o jsonpath='{.spec.domain}'   # domaine des Ro
 Dans `terraform/terraform.tfvars` : `kubeconfig_path`, `kubeconfig_context` (nouveau contexte), `apps_domain` (étape 2), `namespace`.
 ```powershell
 cd D:\workspace\public\jenkins-on-openshift-with-terraform\terraform
-Remove-Item terraform.tfstate, terraform.tfstate.backup -ErrorAction SilentlyContinue   # l'ancien state décrit un cluster disparu (sauvegardé)
+# Seulement si le CLUSTER change : l'ancien state décrit un cluster disparu (sauvegardé).
+# Même cluster, namespace vidé : garder le state, Terraform constate seul que les ressources ont disparu.
+# Remove-Item terraform.tfstate, terraform.tfstate.backup -ErrorAction SilentlyContinue
 terraform init
-terraform apply                                            # crée BuildConfig / ImageStream / Deployment / Route
-ocs start-build jenkins --from-dir=../jenkins-image --follow  # 1re fois : Terraform ne déclenche pas le build de l'image
+# 1) BuildConfig + ImageStream seuls, puis l'image : sinon l'apply complet attend 10 min un pod sans image (timeout, ImagePullBackOff)
+terraform apply -target=openshift_build_config.jenkins -target=openshift_image_stream.jenkins
+ocs start-build jenkins --from-dir=jenkins-image --follow    # dossier terraform/jenkins-image
+# 2) Le reste (Deployment, Route, secrets...)
+terraform apply
 terraform output jenkins_route_host
 ```
 Attendu : pod `jenkins` 1/1, console Jenkins accessible sur `https://jenkins-<namespace>.<apps_domain>`.
@@ -74,6 +79,10 @@ k --context minikube get pods -n argocd                   # 6 pods 1/1 (dex à 0
 
 ## 5. Identité d'Argo CD sur le cluster
 
+> **Ordre : faire les étapes 6 et 7 AVANT celle-ci.** Dès qu'Argo a un token valide, il déploie seul (`autoSync` en dev) :
+> sans secrets ni image, les pods restent en erreur. Si minikube contient déjà l'Argo d'un ancien Sandbox, seul le Secret
+> de cluster est à mettre à jour (même nom).
+
 ```powershell
 ocs apply -f bootstrap/sandbox-cluster/                   # SA argocd-deployer + RoleBinding edit + Secret de token
 $t = ocs get secret argocd-deployer-token -o jsonpath='{.data.token}'
@@ -87,7 +96,9 @@ k --context minikube apply -f <copie-hors-depot>.yaml
 
 ## 6. Secrets applicatifs (hors Git)
 
-Copies restaurées à l'étape 0 (modèles : `bootstrap/secrets/dev/*.example.yaml`) :
+Copies restaurées à l'étape 0 (modèles : `bootstrap/secrets/dev/*.example.yaml`). Vérifier avant qu'aucune valeur n'est restée
+celle du modèle (`CHANGE_ME`) : MySQL et Grafana ne lisent leur mot de passe qu'à la première initialisation de leur volume.
+
 ```powershell
 ocs apply -f bootstrap/secrets/dev/donation-api-db-secret.dev.yaml
 ocs apply -f bootstrap/secrets/dev/donation-api-management-secret.dev.yaml
@@ -96,7 +107,8 @@ ocs apply -f bootstrap/secrets/dev/observability-grafana-secret.dev.yaml   # com
 
 ## 7. Premier build Jenkins
 
-Lancer le job `inner-donation-api` (branche `main`) : il publie le jar dans Nexus, construit l'image dans le nouveau registry et commite le nouveau `newTag` dans `gitops-platform` (`main`).
+Lancer le job `inner-donation-api` sur la branche **`develop`** (seule branche liée à l'overlay `dev` ; `main` vise l'overlay `prod`, absent) : il publie le jar dans Nexus, construit l'image dans le nouveau registry et commite le nouveau `newTag` dans `gitops-platform` (`main`).
+Reconstruction **depuis un tag** (code plus ancien que `develop`) : construire aussi la branche `main` (l'étape « Update GitOps » échoue, attendu), puis pointer l'overlay `dev` vers cette image par un commit sur `gitops-platform/main` (`newTag`).
 À faire **avant** l'étape 8 : l'overlay référence sinon une image absente du nouveau registry (`ImagePullBackOff`).
 
 ## 8. App-of-apps

@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - postgresql
+  - keycloak/deployment.yaml
+  - keycloak/service.yaml
+  - config-job.yaml
+# ConfigMaps generees (suffixe de hash) : un changement de contenu relance Keycloak ou l'import du realm
+configMapGenerator:
+  # Configuration du serveur : l'overlay pose KC_HOSTNAME et KC_HOSTNAME_ADMIN (behavior: merge)
+  - name: keycloak-config
+    literals:
+      - KC_LOG_LEVEL=info
+  # Realms communs a tous les environnements (fichiers lus aussi par le Compose local : aucune copie)
+  - name: keycloak-realm-base
+    files:
+      - realm/10-realm-customers.yaml
+      - realm/11-realm-internal.yaml
+  # Variables non secretes des realms : valeurs sures par defaut, l'overlay les adapte (behavior: merge)
+  - name: keycloak-realm-env
+    literals:
+      - DONATION_TESTS_CLIENT_ENABLED=false
+      - GOOGLE_IDP_ENABLED=false
+      - GOOGLE_CLIENT_ID=non-configure
+      - GOOGLE_CLIENT_SECRET=non-configure
+      - FACEBOOK_IDP_ENABLED=false
+      - FACEBOOK_CLIENT_ID=non-configure
+      - FACEBOOK_CLIENT_SECRET=non-configure

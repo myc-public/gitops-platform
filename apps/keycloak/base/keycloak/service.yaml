@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/component: identity-provider
+    app.kubernetes.io/part-of: identity
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: keycloak
+  # Port HTTP seul : le port de management (9000) reste interne au pod. Pas de Route : l'acces public passe par APISIX externe.
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
