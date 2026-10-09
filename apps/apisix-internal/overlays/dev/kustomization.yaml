@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gregorie769-dev
+resources:
+  - ../../base
+configMapGenerator:
+  - name: apisix-internal-env
+    behavior: merge
+    literals:
+      # iss des tokens = URL publique (APISIX externe), la meme que KC_HOSTNAME (apps/keycloak) et l'API
+      - PUBLIC_URL=https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com

@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+# Memes fichiers que la pile locale (local/stack, aucune copie). ConfigMap generee (suffixe de hash) :
+# un changement de route ou de configuration redemarre APISIX.
+configMapGenerator:
+  - name: apisix-internal-conf
+    files:
+      - config.yaml
+      - apisix.yaml
+  # Variables de apisix.yaml (${{...}}) : posees par l'overlay (behavior: merge)
+  - name: apisix-internal-env
+    literals:
+      - KEYCLOAK_INTERNAL_URL=http://keycloak:8080
+      - DONATION_API_UPSTREAM=donation-api:8080
