@@ -21,6 +21,20 @@ patches:
       - op: add
         path: /data/OTLP_EXPORT_ENABLED
         value: "true"
+      # Emetteurs de confiance (DI4) : iss = URL publique (APISIX externe, comme dans les tokens) ;
+      # cles de signature lues en interne, sans passer par les passerelles (D5-2)
+      - op: add
+        path: /data/OIDC_INTERNAL_ISSUER_URI
+        value: https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/myc-internal
+      - op: add
+        path: /data/OIDC_INTERNAL_JWK_SET_URI
+        value: http://keycloak:8080/realms/myc-internal/protocol/openid-connect/certs
+      - op: add
+        path: /data/OIDC_CUSTOMERS_ISSUER_URI
+        value: https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/myc-customers
+      - op: add
+        path: /data/OIDC_CUSTOMERS_JWK_SET_URI
+        value: http://keycloak:8080/realms/myc-customers/protocol/openid-connect/certs
 images:
   - name: donation-api
     newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/donation-api
