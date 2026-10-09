@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gregorie769-dev
+resources:
+  - ../../base
+configMapGenerator:
+  - name: apisix-external-env
+    behavior: merge
+    literals:
+      # URL publique = host de la Route = iss des tokens (KC_HOSTNAME de apps/keycloak)
+      - PUBLIC_URL=https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com
+      - HSTS_MAX_AGE=31536000
+      # Routeur OpenShift, sur le reseau des pods (spike S3) : seul proxy dont X-Forwarded-* est cru
+      - TRUSTED_PROXY_CIDR=10.128.0.0/14
+patches:
+  - target: { kind: Route, name: donation }
+    patch: |-
+      - op: add
+        path: /spec/host
+        value: donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com
+images:
+  - name: apisix-coraza
+    newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/apisix-coraza
+    # Digest de apisix-coraza:3.19.0-coraza0.6.0 (BuildConfig Terraform) : a reporter apres chaque reconstruction
+    digest: sha256:37b46dcf15243a6a1b6785d0bff077f666170f1ba681c638c723a74f4205f77f

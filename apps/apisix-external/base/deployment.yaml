@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apisix-external
+  labels:
+    app.kubernetes.io/name: apisix-external
+    app.kubernetes.io/component: edge-gateway
+    app.kubernetes.io/part-of: inner-apis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apisix-external
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apisix-external
+        app.kubernetes.io/component: edge-gateway
+    spec:
+      containers:
+        - name: apisix
+          # Nom logique : image apisix-coraza (APISIX + WAF Coraza) construite sur le cluster, digest pose par l'overlay
+          image: apisix-coraza
+          ports:
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+            - name: status
+              containerPort: 7085
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: apisix-external-env
+          # Mode autonome : configuration et routes lues dans des fichiers (pas d'etcd, pas d'API d'administration).
+          # TLS termine par la Route : pas de TLS_CERT / TLS_KEY (le bloc ssls de apisix.yaml reste inactif).
+          volumeMounts:
+            - name: conf
+              mountPath: /usr/local/apisix/conf/config.yaml
+              subPath: config.yaml
+            - name: conf
+              mountPath: /usr/local/apisix/conf/apisix.yaml
+              subPath: apisix.yaml
+          # Port de statut : hors WAF et hors routes
+          readinessProbe:
+            httpGet: { path: /status/ready, port: status }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /status, port: status }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+          # Une VM wasm (WAF) par worker, 2 workers : ~272 Mi mesures (ADR 07/10)
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { cpu: "1", memory: 768Mi }
+      volumes:
+        - name: conf
+          configMap:
+            name: apisix-external-conf
