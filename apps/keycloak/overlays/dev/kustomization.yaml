@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gregorie769-dev
+resources:
+  - ../../base
+  - mailpit.yaml
+configMapGenerator:
+  - name: keycloak-config
+    behavior: merge
+    literals:
+      # URL publique = iss des tokens = future Route d'APISIX externe (etape O1-4), utilisee des maintenant
+      # pour que l'emetteur ne change jamais. Avant O1-4 : tests par ocs port-forward.
+      - KC_HOSTNAME=https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com
+      # Console admin : jamais publique, uniquement par ocs port-forward svc/keycloak 8080
+      - KC_HOSTNAME_ADMIN=http://localhost:8080
+  - name: keycloak-realm-env
+    behavior: merge
+    literals:
+      # Front et back-office : pas encore deployes (K6), valeurs du dev local
+      - DONATION_WEB_BASE_URL=http://localhost:3000
+      - DONATION_BACKOFFICE_BASE_URL=http://localhost:3001
+      # Client de la collection E2E (code + PKCE automatise) : dev uniquement
+      - DONATION_TESTS_CLIENT_ENABLED=true
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+  # Utilisateurs de test (dev uniquement), memes fichiers que le Compose local
+  - name: keycloak-realm-dev
+    files:
+      - realm/20-users-customers-dev.yaml
+      - realm/21-users-internal-dev.yaml
+patches:
+  # Le Job d'import monte aussi les utilisateurs de test (appliques apres les realms : 20, 21)
+  - target: { kind: Job, name: keycloak-config }
+    patch: |-
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value: { name: realm-dev, configMap: { name: keycloak-realm-dev } }
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value: { name: realm-dev, mountPath: /config/20-users-customers-dev.yaml, subPath: 20-users-customers-dev.yaml }
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value: { name: realm-dev, mountPath: /config/21-users-internal-dev.yaml, subPath: 21-users-internal-dev.yaml }

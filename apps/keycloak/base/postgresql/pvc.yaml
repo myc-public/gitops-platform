@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: keycloak-db-data
+  labels:
+    app.kubernetes.io/name: keycloak-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: identity
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    # Jamais supprimee par Argo CD : comptes et sessions survivent a une suppression de l'Application
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # Pas de storageClassName : classe par defaut du cluster => manifeste portable
+  resources:
+    requests:
+      storage: 1Gi

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/component: identity-provider
+    app.kubernetes.io/part-of: identity
+spec:
+  # 1 replica : KC_CACHE=local (pas de cluster Infinispan). Passer a 2 impose le cache distribue.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+        app.kubernetes.io/component: identity-provider
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak@sha256:82a77884f3af238beab1e7afd63b5f530e1b5c0590bd7aa60b40a40463e29b2c   # 26.7.4
+          # Mode production (DK3), comme en local ; build des options au demarrage
+          args: ["start"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://keycloak-db:5432/keycloak
+            - name: KC_CACHE
+              value: local
+            # Derriere APISIX externe (TLS termine en amont) : HTTP en interne, en-tetes X-Forwarded-* pris en compte
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            # Appels internes (keycloak-config-cli, APISIX interne, API) par http://keycloak:8080
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            # Sante et metriques sur le port de management 9000 (absent du Service)
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+          envFrom:
+            # KC_HOSTNAME (URL publique = iss des tokens), KC_HOSTNAME_ADMIN : poses par l'overlay
+            - configMapRef:
+                name: keycloak-config
+            # KC_DB_USERNAME / KC_DB_PASSWORD et compte admin de demarrage : Secrets crees hors Git
+            - secretRef:
+                name: keycloak-db-secret
+            - secretRef:
+                name: keycloak-admin-secret
+          startupProbe:
+            # Le build des options au demarrage peut prendre plusieurs minutes avec peu de CPU : jusqu'a 5 min
+            httpGet: { path: /health/started, port: management }
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /health/ready, port: management }
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /health/live, port: management }
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 250m, memory: 768Mi }
+            limits: { cpu: "1", memory: 1536Mi }
