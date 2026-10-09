@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apisix-internal
+  labels:
+    app.kubernetes.io/name: apisix-internal
+    app.kubernetes.io/component: api-gateway
+    app.kubernetes.io/part-of: inner-apis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apisix-internal
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apisix-internal
+        app.kubernetes.io/component: api-gateway
+    spec:
+      containers:
+        - name: apisix
+          # APISIX 3.19.0-debian, epingle par digest (meme image que la pile locale) ; UID aleatoire OK (spike S1)
+          image: apache/apisix@sha256:9a7e45dc943fbf10ec916d1232bae4cda9302ae28a4696cfb83c2da01d261141
+          ports:
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+            - name: status
+              containerPort: 7085
+              protocol: TCP
+          envFrom:
+            # PUBLIC_URL (iss attendu), KEYCLOAK_INTERNAL_URL (decouverte / JWKS), DONATION_API_UPSTREAM
+            - configMapRef:
+                name: apisix-internal-env
+          # Mode autonome : configuration et routes lues dans des fichiers (pas d'etcd, pas d'API d'administration)
+          volumeMounts:
+            - name: conf
+              mountPath: /usr/local/apisix/conf/config.yaml
+              subPath: config.yaml
+            - name: conf
+              mountPath: /usr/local/apisix/conf/apisix.yaml
+              subPath: apisix.yaml
+          # Pret = routes chargees par tous les workers (port de statut interne au pod)
+          readinessProbe:
+            httpGet: { path: /status/ready, port: status }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /status, port: status }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+      volumes:
+        - name: conf
+          configMap:
+            name: apisix-internal-conf
