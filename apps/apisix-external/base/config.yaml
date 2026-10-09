@@ -7,6 +7,14 @@ deployment:
 apisix:
   node_listen:
     - 9080
+  # Proxy de confiance (OpenShift : routeur, sur le reseau des pods) : seuls ses X-Forwarded-Proto / -Host / -Port
+  # sont conserves (sinon APISIX les remplace : Keycloak verrait http). Defaut : aucun proxy (pile locale).
+  trusted_addresses:
+    - "${{TRUSTED_PROXY_CIDR:=127.0.0.1/32}}"
+  # Sondes (OpenShift) : /status/ready = routes chargees ; port interne au pod, hors WAF (ni Service, ni port publie)
+  status:
+    ip: 0.0.0.0
+    port: 7085
   ssl:
     enable: true
     listen:
@@ -27,5 +35,6 @@ nginx_config:
     - KEYCLOAK_UPSTREAM
     - APISIX_INTERNAL_UPSTREAM
     - HSTS_MAX_AGE
+    - TRUSTED_PROXY_CIDR
     - TLS_CERT
     - TLS_KEY

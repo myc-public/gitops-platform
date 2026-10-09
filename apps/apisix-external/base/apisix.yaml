@@ -1,6 +1,7 @@
 # APISIX externe (K5, D5-6 a D5-8) : TLS, WAF, liste blanche de chemins, limitation par IP, en-tetes de securite.
 # Aucune validation de token ici (APISIX interne + API). Tout chemin absent de la liste repond 404.
-# Variables : PUBLIC_URL, KEYCLOAK_UPSTREAM, APISIX_INTERNAL_UPSTREAM, HSTS_MAX_AGE, TLS_CERT / TLS_KEY (local).
+# Variables : PUBLIC_URL, KEYCLOAK_UPSTREAM, APISIX_INTERNAL_UPSTREAM, HSTS_MAX_AGE, TRUSTED_PROXY_CIDR (OpenShift),
+# TLS_CERT / TLS_KEY (local).
 
 global_rules:
   - id: securite-bordure
@@ -17,7 +18,13 @@ global_rules:
               - SecAction "id:900200,phase:1,nolog,pass,t:none,setvar:'tx.allowed_methods=GET HEAD POST OPTIONS PUT PATCH DELETE'"
               - Include @owasp_crs/*.conf
           default_directives: default
-      # 20 req/s par IP, rafale 40, au-dela 429 (derriere un routeur : cle a revoir avec real-ip, deploiement OpenShift)
+      # IP du client : prise dans X-Forwarded-For SEULEMENT si la requete vient du proxy de confiance (routeur OpenShift,
+      # spike S3), derniere valeur (non recursif : l'usurpation par le client est ignoree). Pile locale : sans effet.
+      real-ip:
+        source: http_x_forwarded_for
+        trusted_addresses: ["${{TRUSTED_PROXY_CIDR:=127.0.0.1/32}}"]
+        recursive: false
+      # 20 req/s par IP client, rafale 40, au-dela 429
       limit-req:
         rate: 20
         burst: 40
