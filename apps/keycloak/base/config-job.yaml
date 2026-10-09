@@ -1,0 +1,66 @@
+# Applique les realms (DK1) avec keycloak-config-cli, apres chaque synchronisation Argo CD (hook PostSync) :
+# Keycloak est alors Healthy. Une modification d'un fichier de realm change le nom de sa ConfigMap (suffixe de hash)
+# => l'Application passe OutOfSync => synchronisation => nouvel import. Import idempotent.
+# Le Job precedent est supprime au lancement du suivant (BeforeHookCreation) : ses logs restent consultables d'ici la.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-config
+  labels:
+    app.kubernetes.io/name: keycloak-config
+    app.kubernetes.io/component: identity-provider
+    app.kubernetes.io/part-of: identity
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak-config
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: keycloak-config-cli
+          image: quay.io/adorsys/keycloak-config-cli@sha256:0955d98c8a341898b7aa177477edf8a1e90569ae50bbe7598141c1270b773274   # 6.5.1-26.5.5
+          env:
+            - name: KEYCLOAK_URL
+              value: http://keycloak:8080
+            - name: KEYCLOAK_USER
+              valueFrom:
+                secretKeyRef: { name: keycloak-admin-secret, key: KC_BOOTSTRAP_ADMIN_USERNAME }
+            - name: KEYCLOAK_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: keycloak-admin-secret, key: KC_BOOTSTRAP_ADMIN_PASSWORD }
+            - name: KEYCLOAK_AVAILABILITYCHECK_ENABLED
+              value: "true"
+            - name: KEYCLOAK_AVAILABILITYCHECK_TIMEOUT
+              value: 120s
+            # Fichiers appliques dans l'ordre alphabetique : 10, 11 (base) puis 20, 21 (overlay)
+            - name: IMPORT_FILES_LOCATIONS
+              value: /config/*
+            - name: IMPORT_VARSUBSTITUTION_ENABLED
+              value: "true"
+          envFrom:
+            # Variables non secretes des realms (URLs, SMTP, federation) : base + overlay
+            - configMapRef:
+                name: keycloak-realm-env
+            # Secrets des clients et mot de passe des utilisateurs de test : cree hors Git
+            - secretRef:
+                name: keycloak-realm-secret
+          volumeMounts:
+            - name: realm-base
+              mountPath: /config/10-realm-customers.yaml
+              subPath: 10-realm-customers.yaml
+            - name: realm-base
+              mountPath: /config/11-realm-internal.yaml
+              subPath: 11-realm-internal.yaml
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { cpu: "1", memory: 768Mi }
+      volumes:
+        - name: realm-base
+          configMap:
+            name: keycloak-realm-base
