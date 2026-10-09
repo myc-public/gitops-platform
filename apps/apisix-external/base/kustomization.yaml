@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+  - route.yaml
+# Memes fichiers que la pile locale (local/stack, aucune copie). ConfigMap generee (suffixe de hash) :
+# un changement de route ou de configuration redemarre APISIX.
+configMapGenerator:
+  - name: apisix-external-conf
+    files:
+      - config.yaml
+      - apisix.yaml
+  # Variables de config.yaml / apisix.yaml (${{...}}) : PUBLIC_URL, HSTS_MAX_AGE, TRUSTED_PROXY_CIDR par l'overlay
+  - name: apisix-external-env
+    literals:
+      - KEYCLOAK_UPSTREAM=keycloak:8080
+      - APISIX_INTERNAL_UPSTREAM=apisix-internal:9080

@@ -1,0 +1,22 @@
+# Seule Route publique de la chaine (O4) : Internet -> routeur OpenShift (TLS) -> APISIX externe (WAF, liste blanche).
+# Le host est pose par l'overlay (= PUBLIC_URL = iss des tokens).
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: donation
+  labels:
+    app.kubernetes.io/name: apisix-external
+    app.kubernetes.io/component: edge-gateway
+    app.kubernetes.io/part-of: inner-apis
+spec:
+  to:
+    kind: Service
+    name: apisix-external
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    # http -> https (301 du routeur) : aucune requete en clair jusqu'a APISIX
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None
