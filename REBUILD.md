@@ -122,25 +122,35 @@ Piège connu : alertes en `plugin not registered` → vérifier `GF_PLUGINS_PREI
 
 **Optionnel — restaurer le jeu de données de test** (sinon Flyway crée un schéma vide) :
 ```powershell
-Get-Content D:\workspace\public\_backup\donation-api-mysql.sql -Raw | ocs exec -i deploy/donation-api-mysql -- bash -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"'
+Get-Content D:\workspace\public\_backup\donation-api-mysql.sql -Raw | oc --kubeconfig "$HOME\.kube\sandbox.config" exec -i deploy/donation-api-mysql -- bash -c 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE"'
 ```
 
 ## 9. Recette
 
+La chaine securisee n'a qu'une entree publique : la Route `donation` (APISIX externe + WAF). L'API n'a plus de Route,
+`/management` et `/docs` ne sont pas exposes : la sante de l'API se controle de l'interieur
+(`exec` : `oc --kubeconfig ...`, la fonction `ocs` avale le `--`).
 ```powershell
-$h = "https://" + (ocs get route donation-api -o jsonpath='{.spec.host}')
-ocs get pods                                              # donation-api 1/1, donation-api-mysql 1/1
-curl.exe -s -o NUL -w "health %{http_code}`n"  "$h/management/health"        # 200
-curl.exe -s -o NUL -w "loggers %{http_code}`n" "$h/management/loggers"       # 401
-curl.exe -s -o NUL -w "api-docs %{http_code}`n" "$h/docs/api-docs"           # 200
-curl.exe -s "$h/management/info"                                             # build.version
+k --context minikube get applications -n argocd           # toutes Synced / Healthy
+ocs get pods                                              # tout 1/1 (hors builds et Job keycloak-config termine)
+ocs get routes -o custom-columns=NOM:.metadata.name,TLS:.spec.tls.termination   # donation, grafana, jenkins (edge)
+oc --kubeconfig "$HOME\.kube\sandbox.config" exec deploy/donation-api -- curl -s localhost:8080/management/health      # {"status":"UP"...}
+oc --kubeconfig "$HOME\.kube\sandbox.config" exec deploy/donation-api -- curl -s localhost:8080/management/info        # build.version
+
+$u = "https://" + (ocs get route donation -o jsonpath='{.spec.host}')
+curl.exe -s -o NUL -w "oidc %{http_code}`n"    "$u/realms/myc-internal/.well-known/openid-configuration"   # 200
+curl.exe -s -o NUL -w "api %{http_code}`n"     "$u/api/v1/donors"                                         # 401
+curl.exe -s -o NUL -w "admin %{http_code}`n"   "$u/admin/master/console/"                                 # 404
 
 # Observabilite
 $g = "https://" + (ocs get route grafana -o jsonpath='{.spec.host}')
 curl.exe -s -o NUL -w "grafana anonyme %{http_code}`n" "$g/api/search"      # 401
 ```
+Recette fonctionnelle et securite : `inner-donation-api/postman/PLAN-DE-TEST-E2E.md`, collection `e2e-donation`,
+environnement `e2e-sandbox` (toute verte sauf G2, dette 16), puis controles 6.1 et 6.3 a 6.5.
+
 Connecté à Grafana (compte de `observability-grafana-secret`) :
 - `/d/donation-api-service/donation-api-e28094-service?var-env=dev` : « Télémétrie reçue » = OK, « Version déployée » renseignée ;
 - Alerting : 7 règles `donation-api`, santé `ok` ;
-- Postman : collection `inner-donation-api/postman`, dossier S1 avec `observabilite-s1-nominal.data.json` (180 tests verts) puis S2 avec `observabilite-s2-erreurs.data.json` (15 tests verts) ; le dashboard montre le trafic, les dons par catégorie et les 4xx, Tempo les traces avec spans SQL.
+- Postman observabilité (S1 / S2) : à reprendre avec un token `donation-service` sur l'URL publique (lot prévu après O1-6) ; le dashboard montre le trafic, les dons par catégorie et les 4xx, Tempo les traces avec spans SQL.
 Consigner le résultat dans `jenkins-on-openshift-with-terraform/docs/ROADMAP.md` (journal).

@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - deployment.yaml
   - service.yaml
+  - networkpolicy.yaml
 # Memes fichiers que la pile locale (local/stack, aucune copie). ConfigMap generee (suffixe de hash) :
 # un changement de route ou de configuration redemarre APISIX.
 configMapGenerator:

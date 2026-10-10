@@ -1,0 +1,40 @@
+# Isolation reseau (O2) : seuls les flux de la pile locale (reseaux Docker) sont autorises ; sortant non filtre.
+# Sans effet sur le Sandbox OpenShift (politique imposee allow-same-namespace, dette 17) ; effectif sur un cluster maitrise.
+# Les sondes du kubelet ne sont pas concernees.
+# Keycloak : APISIX externe (login, OIDC public), APISIX interne et API (JWKS), Job d'import. Base : uniquement Keycloak.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: keycloak
+  labels:
+    app.kubernetes.io/part-of: identity
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: apisix-external } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: apisix-internal } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: donation-api } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: keycloak-config } }
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: keycloak-db
+  labels:
+    app.kubernetes.io/part-of: identity
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak-db
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: keycloak } }
+      ports:
+        - { protocol: TCP, port: 5432 }
