@@ -57,3 +57,21 @@ spec:
       port: 8025
       targetPort: http
       protocol: TCP
+---
+# Isolation reseau (O2, sans effet sur le Sandbox : dette 17) : SMTP uniquement depuis Keycloak ; interface web par port-forward.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mailpit
+  labels:
+    app.kubernetes.io/part-of: identity
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mailpit
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: keycloak } }
+      ports:
+        - { protocol: TCP, port: 1025 }

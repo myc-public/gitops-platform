@@ -5,6 +5,7 @@ resources:
   - keycloak/deployment.yaml
   - keycloak/service.yaml
   - config-job.yaml
+  - networkpolicy.yaml
 # ConfigMaps generees (suffixe de hash) : un changement de contenu relance Keycloak ou l'import du realm
 configMapGenerator:
   # Configuration du serveur : l'overlay pose KC_HOSTNAME et KC_HOSTNAME_ADMIN (behavior: merge)
