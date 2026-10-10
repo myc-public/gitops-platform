@@ -64,8 +64,13 @@ ocs start-build jenkins --from-dir=jenkins-image --follow    # dossier terraform
 # 2) Le reste (Deployment, Route, secrets...)
 terraform apply
 terraform output jenkins_route_host
+# 3) Image du WAF (APISIX externe) : construite depuis gitops-platform/main (images/apisix-coraza)
+ocs start-build apisix-coraza --follow
+ocs get istag apisix-coraza:3.19.0-coraza0.6.0 -o jsonpath='{.image.metadata.name}'   # digest
 ```
 Attendu : pod `jenkins` 1/1, console Jenkins accessible sur `https://jenkins-<namespace>.<apps_domain>`.
+Le digest de `apisix-coraza` change à chaque reconstruction : le reporter (PR) dans
+`apps/apisix-external/overlays/dev/kustomization.yaml` (`images: digest`) **avant l'étape 8**, sinon `ImagePullBackOff`.
 
 ## 4. Argo CD (minikube)
 
@@ -103,7 +108,11 @@ celle du modèle (`CHANGE_ME`) : MySQL et Grafana ne lisent leur mot de passe qu
 ocs apply -f bootstrap/secrets/dev/donation-api-db-secret.dev.yaml
 ocs apply -f bootstrap/secrets/dev/donation-api-management-secret.dev.yaml
 ocs apply -f bootstrap/secrets/dev/observability-grafana-secret.dev.yaml   # compte admin Grafana (stack otel-lgtm)
+ocs apply -f bootstrap/secrets/dev/keycloak-db-secret.dev.yaml           # PostgreSQL de Keycloak
+ocs apply -f bootstrap/secrets/dev/keycloak-admin-secret.dev.yaml        # admin de démarrage (lu aussi par l'import des realms)
+ocs apply -f bootstrap/secrets/dev/keycloak-realm-secret.dev.yaml        # secrets clients + mot de passe des utilisateurs de test
 ```
+PostgreSQL et le compte admin Keycloak ne sont créés qu'au premier démarrage : mêmes précautions que MySQL.
 
 ## 7. Premier build Jenkins
 
@@ -154,3 +163,19 @@ Connecté à Grafana (compte de `observability-grafana-secret`) :
 - Alerting : 7 règles `donation-api`, santé `ok` ;
 - Postman observabilité (S1 / S2) : à reprendre avec un token `donation-service` sur l'URL publique (lot prévu après O1-6) ; le dashboard montre le trafic, les dons par catégorie et les 4xx, Tempo les traces avec spans SQL.
 Consigner le résultat dans `jenkins-on-openshift-with-terraform/docs/ROADMAP.md` (journal).
+
+## Reprise de session (Sandbox existant)
+
+Le Developer Sandbox met à 0 les déploiements après ~12 h de fonctionnement, et Argo CD (sur minikube, hors du cluster)
+ne les relance que lorsqu'il tourne (dette 19). Avant chaque session :
+```powershell
+minikube start                                            # Argo CD reprend la main
+k --context minikube get applications -n argocd           # attendre Synced / Healthy (quelques minutes)
+ocs get deploy                                            # tout à 1/1, sauf peut-être jenkins
+```
+- **Jenkins à 0** (géré par Terraform, jamais relancé par Argo) : `terraform plan -target=kubernetes_deployment.jenkins -out=jenkins.tfplan`,
+  vérifier `replicas 0 -> 1`, puis `terraform apply jenkins.tfplan` (dossier `jenkins-on-openshift-with-terraform/terraform`).
+- **Tunnel Nexus** (avant un build) : si `cloudflared` a été arrêté, le relancer, reporter la nouvelle URL dans `nexus_url`
+  (`terraform/secrets.auto.tfvars`) et appliquer Terraform sur le Deployment Jenkins.
+- **Session `ocs` expirée** : `oc login --token=<token> --server=<URL API> --kubeconfig "$HOME\.kube\sandbox.config"`.
+- Une mise en veille d'`otel-lgtm` produit des lignes ERROR « Failed to export » côté API (alerte A5), qui retombent ~5 min après sa relance.
