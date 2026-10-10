@@ -2,7 +2,7 @@
 
 Point d'entrée pour remonter toute la chaîne (Jenkins → Nexus / registry → GitOps → Argo CD → OpenShift) sur un **nouveau cluster OpenShift** (Sandbox renouvelé, OpenShift Local, OKD...), à partir de Git seul et des secrets sauvegardés.
 
-État de référence : tag Git `sandbox-v2` sur tous les dépôts (build #33, 28/09/2026 : pipeline CI/CD, observabilité phases 1-4, API First L0, architecture sécurité). Précédent : `sandbox-v1` (build #25, 24/09).
+État de référence : tag Git `sandbox-v3` sur tous les dépôts (image `1.1.0-SNAPSHOT-1879da8-b6`, 10/10/2026 : chaîne sécurisée O1 sur le Sandbox — Keycloak, APISIX interne et externe + WAF, Route publique unique ; observabilité revalidée derrière la chaîne). Précédents : `sandbox-v2` (build #33, 28/09), `sandbox-v1` (build #25, 24/09).
 Commandes en PowerShell. `ocs` = `oc --kubeconfig "$HOME\.kube\sandbox.config"` (profil PowerShell), `k` = `kubectl`.
 
 ## 0. Prérequis
@@ -11,16 +11,16 @@ Commandes en PowerShell. `ocs` = `oc --kubeconfig "$HOME\.kube\sandbox.config"` 
 |---|---|
 | Outils | `oc`, `kubectl`, `terraform`, Docker Desktop, minikube v1.37, 7-Zip, `cloudflared` |
 | minikube | profil `minikube`, driver docker, 2 CPU, 3 Go, Kubernetes v1.34.0 |
-| Sauvegarde | `D:\backup\socle-sandbox-v2-<date>\` : `fichiers-locaux.7z` (chiffré, en-têtes compris : fichiers hors Git, dump MySQL, mémoire Claude), `nexus-data.tgz` |
+| Sauvegarde | `D:\backup\socle-sandbox-v3-<date>\` : `fichiers-locaux.7z` (chiffré, en-têtes compris : fichiers hors Git, dump MySQL, mémoire Claude), `nexus-data.tgz` |
 | Dépôts | `myc-public/*` clonés sous `D:\workspace\public` |
 
 Se placer sur l'état de référence dans chaque dépôt :
 ```powershell
-Get-ChildItem D:\workspace\public -Directory | Where-Object { Test-Path "$($_.FullName)\.git" } | ForEach-Object { git -C $_.FullName fetch --tags; git -C $_.FullName checkout sandbox-v2 }
+Get-ChildItem D:\workspace\public -Directory | Where-Object { Test-Path "$($_.FullName)\.git" } | ForEach-Object { git -C $_.FullName fetch --tags; git -C $_.FullName checkout sandbox-v3 }
 ```
 Restaurer les fichiers hors Git (secrets Terraform et tfstate, copies des secrets applicatifs `*.dev.yaml`, `local/.env`, README locaux, dump MySQL et mémoire Claude dans `_backup\`) à leur place (mot de passe demandé) :
 ```powershell
-& "C:\Program Files\7-Zip\7z.exe" x "D:\backup\socle-sandbox-v2-<date>\fichiers-locaux.7z" -o"D:\workspace\public"
+& "C:\Program Files\7-Zip\7z.exe" x "D:\backup\socle-sandbox-v3-<date>\fichiers-locaux.7z" -o"D:\workspace\public"
 # Si la console refuse le mot de passe (caracteres speciaux mal transmis) : ouvrir l'archive dans l'interface 7-Zip et extraire vers D:\workspace\public
 Copy-Item D:\workspace\public\_backup\claude-memory\* "$HOME\.claude\projects\D--workspace-public\memory\" -Force   # optionnel
 ```
@@ -30,7 +30,7 @@ Copy-Item D:\workspace\public\_backup\claude-memory\* "$HOME\.claude\projects\D-
 Si le volume `nexus-data` a été perdu :
 ```powershell
 docker volume create nexus-data
-docker run --rm -v nexus-data:/data -v "D:\backup\socle-sandbox-v2-<date>:/backup" alpine tar xzf /backup/nexus-data.tgz -C /data
+docker run --rm -v nexus-data:/data -v "D:\backup\socle-sandbox-v3-<date>:/backup" alpine tar xzf /backup/nexus-data.tgz -C /data
 ```
 Démarrer le conteneur `nexus` (voir `jenkins-on-openshift-with-terraform/README_local.md`), puis le tunnel ; reporter l'URL obtenue dans `nexus_url` de `terraform/secrets.auto.tfvars`.
 
