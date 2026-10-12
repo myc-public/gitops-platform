@@ -68,6 +68,7 @@ services:
       IMPORT_VARSUBSTITUTION_ENABLED: "true"
       # Valeurs substituees dans les fichiers des realms
       DONATION_WEB_BASE_URL: http://localhost:3000
+      DONATION_WEB_BACKCHANNEL_URL: http://donation-web:3000
       DONATION_BACKOFFICE_BASE_URL: http://localhost:3001
       DONATION_TESTS_CLIENT_ENABLED: "true"
       SMTP_HOST: mailpit
