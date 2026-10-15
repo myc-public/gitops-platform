@@ -1,0 +1,45 @@
+# Surcharge du Compose du BFF (web-bff/local/compose.yaml) pour le mode pile : Redis sans port publie, et l'instance
+# web-bff-customers conteneurisee (jar de mvn package, meme Dockerfile que la CI). Chemins relatifs a web-bff/local.
+# Le BFF passe par APISIX interne (JWT, scopes) comme sur OpenShift ; aucun port publie.
+services:
+  redis:
+    ports: !reset []
+    networks: [sessions]
+
+  web-bff-customers:
+    build:
+      context: ..
+      dockerfile: cicd/openshift/Dockerfile
+      args:
+        JAR_FILE: target/*.jar
+    image: web-bff:local
+    environment:
+      # Profil autre que local : logs JSON (ECS) sur stdout
+      SPRING_PROFILES_ACTIVE: pile
+      SERVER_PORT: "8080"
+      BFF_INSTANCE: ${BFF_INSTANCE:?BFF_INSTANCE absent - ajouter la ligne dans .env (voir .env.example)}
+      # iss public (APISIX externe) ; token, cles et userinfo lus en interne, sans passer par les passerelles
+      OIDC_ISSUER_URI: ${PUBLIC_URL}/realms/myc-customers
+      OIDC_INTERNAL_URI: http://keycloak:8080/realms/myc-customers
+      OIDC_CLIENT_ID: web-bff
+      OIDC_CLIENT_SECRET: ${WEB_BFF_CLIENT_SECRET:?WEB_BFF_CLIENT_SECRET absent}
+      BFF_ALLOWED_ORIGINS: ${PUBLIC_URL}
+      API_BASE_URL: http://apisix-int:9080
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD absent - ajouter la ligne dans .env (voir .env.example)}
+    # bff : appele par APISIX externe ; internal : APISIX interne ; idp : Keycloak (token, back-channel) ; sessions : Redis
+    networks: [bff, internal, idp, sessions]
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  bff:
+    name: donation-pile-bff
+  internal:
+    name: donation-pile-internal
+  idp:
+    name: donation-pile-idp
+  sessions:
+    name: donation-pile-sessions
