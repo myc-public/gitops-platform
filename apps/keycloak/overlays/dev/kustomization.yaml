@@ -18,6 +18,7 @@ configMapGenerator:
     literals:
       # Front et back-office : pas encore deployes (K6), valeurs du dev local
       - DONATION_WEB_BASE_URL=http://localhost:3000
+      - WEB_BFF_BACKCHANNEL_URL=http://web-bff-customers:8080
       - DONATION_BACKOFFICE_BASE_URL=http://localhost:3001
       # Client de la collection E2E (code + PKCE automatise) : dev uniquement
       - DONATION_TESTS_CLIENT_ENABLED=true

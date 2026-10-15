@@ -10,6 +10,10 @@ services:
       KC_PROXY_HEADERS: xforwarded
     networks: [idp, data-idp]
   keycloak-config:
+    # Client web-bff : redirect URI et origine = APISIX externe ; back-channel logout = BFF, en interne
+    environment:
+      DONATION_WEB_BASE_URL: ${PUBLIC_URL}
+      WEB_BFF_BACKCHANNEL_URL: http://web-bff-customers:8080
     networks: [idp]
   mailpit:
     ports: !reset []

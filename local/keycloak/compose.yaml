@@ -67,12 +67,14 @@ services:
       IMPORT_FILES_LOCATIONS: /config/*
       IMPORT_VARSUBSTITUTION_ENABLED: "true"
       # Valeurs substituees dans les fichiers des realms
-      DONATION_WEB_BASE_URL: http://localhost:3000
+      # Mode dev : front servi par Vite (5173), BFF lance par mvn sur l'hote (8090)
+      DONATION_WEB_BASE_URL: http://localhost:5173
+      WEB_BFF_BACKCHANNEL_URL: http://host.docker.internal:8090
       DONATION_BACKOFFICE_BASE_URL: http://localhost:3001
       DONATION_TESTS_CLIENT_ENABLED: "true"
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
-      DONATION_WEB_CLIENT_SECRET: ${DONATION_WEB_CLIENT_SECRET:?DONATION_WEB_CLIENT_SECRET absent}
+      WEB_BFF_CLIENT_SECRET: ${WEB_BFF_CLIENT_SECRET:?WEB_BFF_CLIENT_SECRET absent - ajouter la ligne dans .env (voir .env.example)}
       DONATION_BACKOFFICE_CLIENT_SECRET: ${DONATION_BACKOFFICE_CLIENT_SECRET:?DONATION_BACKOFFICE_CLIENT_SECRET absent - regenerer .env depuis .env.example}
       DONATION_SERVICE_CLIENT_SECRET: ${DONATION_SERVICE_CLIENT_SECRET:?DONATION_SERVICE_CLIENT_SECRET absent}
       DONATION_TESTS_CLIENT_SECRET: ${DONATION_TESTS_CLIENT_SECRET:?DONATION_TESTS_CLIENT_SECRET absent}

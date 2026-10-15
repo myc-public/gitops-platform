@@ -1,7 +1,8 @@
 # APISIX externe (K5, D5-6 a D5-8) : TLS, WAF, liste blanche de chemins, limitation par IP, en-tetes de securite.
 # Aucune validation de token ici (APISIX interne + API). Tout chemin absent de la liste repond 404.
 # Variables : PUBLIC_URL, KEYCLOAK_UPSTREAM, APISIX_INTERNAL_UPSTREAM, HSTS_MAX_AGE, TRUSTED_PROXY_CIDR (OpenShift),
-# TLS_CERT / TLS_KEY (local).
+# TLS_CERT / TLS_KEY (local) ; K6a, avec valeurs par defaut = noms des Services OpenShift : WEB_BFF_UPSTREAM,
+# DONATION_WEB_UPSTREAM, PUBLIC_PORT.
 
 global_rules:
   - id: securite-bordure
@@ -57,6 +58,41 @@ routes:
       pass_host: pass
       nodes:
         "${{KEYCLOAK_UPSTREAM}}": 1
+
+  # BFF de l'espace donateur (K6a, DB3) : liste FERMEE des chemins du navigateur. Jamais routes : le back-channel
+  # logout (/bff/logout/connect/*, appele par Keycloak en interne) et /bff/management/* (sondes) -> 404
+  - id: web-bff
+    uris:
+      - /bff/oauth2/authorization/keycloak
+      - /bff/login/oauth2/code/keycloak
+      - /bff/logout
+      - /bff/api/*
+    plugins:
+      # Origine publique vue par le BFF (redirect URI, retour apres deconnexion) : sans cela, X-Forwarded-Port vaut le
+      # port d'ecoute d'APISIX (9443), pas le port public (pile : 8443 ; OpenShift : 443)
+      proxy-rewrite:
+        headers:
+          set:
+            X-Forwarded-Proto: https
+            X-Forwarded-Port: "${{PUBLIC_PORT:=443}}"
+    upstream:
+      type: roundrobin
+      pass_host: pass
+      nodes:
+        "${{WEB_BFF_UPSTREAM:=web-bff-customers:8080}}": 1
+
+  # Front donation-web (K6a, DF2) : liste fermee des pages de l'application et des fichiers du build ; /healthz et tout
+  # autre chemin -> 404. Une nouvelle page React = une nouvelle entree ici.
+  - id: donation-web
+    uris:
+      - /
+      - /profil
+      - /assets/*
+    methods: [GET, HEAD]
+    upstream:
+      type: roundrobin
+      nodes:
+        "${{DONATION_WEB_UPSTREAM:=donation-web:8080}}": 1
 
   # PROVISOIRE (K5) : API pour Postman, clients machine et partenaires ; maintenue ou fermee en K6 (BFF)
   - id: api-v1
