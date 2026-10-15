@@ -215,7 +215,7 @@ clientScopeMappings:
     - client: account-console
       roles: [manage-account, view-groups]
   donation-api:
-    - client: donation-web
+    - client: web-bff
       roles: ["donor:create:own", "donor:read:own", "donation:create:own", "donation:read:own", "donation:list:own"]
     - client: donation-tests
       roles: ["donor:create:own", "donor:read:own", "donation:create:own", "donation:read:own", "donation:list:own"]
