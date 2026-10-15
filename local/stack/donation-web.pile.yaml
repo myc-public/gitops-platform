@@ -1,0 +1,13 @@
+# Front donation-web (K6a) en mode pile : nginx statique (dist/ de npm run build, meme Dockerfile que la CI),
+# aucun port publie, joignable seulement par APISIX externe (reseau front), sans aucun acces sortant.
+services:
+  donation-web:
+    build:
+      context: ../../../donation-web
+      dockerfile: cicd/openshift/Dockerfile
+    image: donation-web:local
+    networks: [front]
+
+networks:
+  front:
+    name: donation-pile-front

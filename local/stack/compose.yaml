@@ -1,6 +1,7 @@
 # Mode PILE (K5, D5-1) : toute la chaine dans Docker, seul le port 8443 (TLS) est publie sur la machine.
 # Navigateur / Postman -> APISIX externe (WAF) -> APISIX interne (JWT, scopes) -> donation-api -> MySQL
-# Reprend les Compose de Keycloak et de l'API SANS les recopier (include + surcharges *.pile.yaml) ;
+# Navigateur -> APISIX externe -> donation-web (front statique) et web-bff-customers (BFF, K6a) -> APISIX interne
+# Reprend les Compose de Keycloak, de l'API et du BFF SANS les recopier (include + surcharges *.pile.yaml) ;
 # reseaux cloisonnes = NetworkPolicy d'OpenShift ; donnees separees du mode dev (volumes propres a la pile).
 # Prerequis et commandes : README.md (certificat local, mvn package, demarrage).
 name: donation-pile
@@ -10,6 +11,9 @@ include:
     env_file: .env
   - path: [../../../inner-donation-api/local/compose.yaml, api.pile.yaml]
     env_file: .env
+  - path: [../../../web-bff/local/compose.yaml, web-bff.pile.yaml]
+    env_file: .env
+  - path: donation-web.pile.yaml
 
 services:
   apisix-ext:
@@ -22,6 +26,10 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:?PUBLIC_URL absent - copier .env.example en .env}
       KEYCLOAK_UPSTREAM: keycloak:8080
       APISIX_INTERNAL_UPSTREAM: apisix-int:9080
+      WEB_BFF_UPSTREAM: web-bff-customers:8080
+      DONATION_WEB_UPSTREAM: donation-web:8080
+      # Port public (X-Forwarded-Port vers le BFF) : APISIX ecoute sur 9443 dans le conteneur
+      PUBLIC_PORT: ${PILE_HTTPS_PORT:-8443}
       HSTS_MAX_AGE: ${HSTS_MAX_AGE:-0}
     volumes:
       - ../../apps/apisix-external/base/config.yaml:/usr/local/apisix/conf/config.yaml:ro
@@ -29,9 +37,9 @@ services:
       - ./tls:/tls:ro
     ports:
       - "127.0.0.1:${PILE_HTTPS_PORT:-8443}:9443"
-    # PROVISOIRE (route /api/v1/**) : internal ; front reserve a Next.js (K6)
-    networks: [edge, front, internal, idp]
-    depends_on: [apisix-int, keycloak]
+    # internal : route PROVISOIRE /api/v1/** ; front : donation-web ; bff : web-bff-customers
+    networks: [edge, front, bff, internal, idp]
+    depends_on: [apisix-int, keycloak, web-bff-customers, donation-web]
 
   apisix-int:
     # APISIX 3.19.0-debian, epingle par digest (pas de WAF ici)
@@ -48,16 +56,21 @@ services:
 
 # Un reseau par lien autorise (equivalent local des NetworkPolicy) :
 #   edge     : entree publique (APISIX externe, seul port publie)
-#   front    : APISIX externe <-> Next.js (K6)
-#   internal : Next.js (K6) et APISIX externe (route provisoire) -> APISIX interne
+#   front    : APISIX externe -> donation-web (le front n'appelle rien)
+#   bff      : APISIX externe -> web-bff-customers
+#   internal : web-bff-customers et APISIX externe (route provisoire) -> APISIX interne
 #   api      : APISIX interne -> donation-api
-#   idp      : Keycloak <- APISIX externe (login), APISIX interne et API (JWKS), keycloak-config, Mailpit
+#   idp      : Keycloak <- APISIX externe (login), APISIX interne et API (JWKS), BFF (token), keycloak-config, Mailpit ;
+#              Keycloak -> BFF (back-channel logout)
+#   sessions : web-bff-customers -> Redis
 #   data-api / data-idp : chaque base n'est joignable que par son service
 networks:
   edge:
     name: donation-pile-edge
   front:
     name: donation-pile-front
+  bff:
+    name: donation-pile-bff
   internal:
     name: donation-pile-internal
   api:
