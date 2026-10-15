@@ -144,25 +144,26 @@ clients:
     implicitFlowEnabled: false
     directAccessGrantsEnabled: false
     serviceAccountsEnabled: false
-  # BFF Next.js (front donateurs) : authorization code + PKCE S256, confidentiel, back-channel logout
-  - clientId: donation-web
-    name: donation-web (Next.js BFF)
+  # BFF Spring Boot partage (instance web-bff-customers, DB4) : authorization code + PKCE S256, confidentiel,
+  # back-channel logout ; une redirect URI exacte par front de ce realm
+  - clientId: web-bff
+    name: web-bff (BFF Spring Boot des fronts donateurs)
     protocol: openid-connect
     publicClient: false
-    secret: $(env:DONATION_WEB_CLIENT_SECRET)
+    secret: $(env:WEB_BFF_CLIENT_SECRET)
     standardFlowEnabled: true
     implicitFlowEnabled: false
     directAccessGrantsEnabled: false
     serviceAccountsEnabled: false
     frontchannelLogout: false
     fullScopeAllowed: false
-    redirectUris: ["$(env:DONATION_WEB_BASE_URL)/api/auth/callback"]
+    redirectUris: ["$(env:DONATION_WEB_BASE_URL)/bff/login/oauth2/code/keycloak"]
     webOrigins: []
     attributes:
       pkce.code.challenge.method: S256
       post.logout.redirect.uris: "$(env:DONATION_WEB_BASE_URL)/"
-      # URL interne (D6-7) : Keycloak appelle le BFF sans passer par Internet ; jamais routee par APISIX externe
-      backchannel.logout.url: "$(env:DONATION_WEB_BACKCHANNEL_URL)/api/auth/backchannel-logout"
+      # URL interne (DB9) : Keycloak appelle le BFF sans passer par Internet ; jamais routee par APISIX externe
+      backchannel.logout.url: "$(env:WEB_BFF_BACKCHANNEL_URL)/bff/logout/connect/back-channel/keycloak"
       backchannel.logout.session.required: "true"
     # email (claim OIDC standard, verifie a l'inscription) : source de l'email du profil donateur (K4c, DC2)
     defaultClientScopes: [basic, acr, profile, email, roles, myc-claims]
