@@ -1,0 +1,16 @@
+# Nom impose : URL de back-channel du realm (http://web-bff-customers:8080, DB9) et upstream d'APISIX externe
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-bff-customers
+  labels:
+    app.kubernetes.io/name: web-bff-customers
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: web-bff-customers
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

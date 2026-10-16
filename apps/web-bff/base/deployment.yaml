@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-bff-customers
+  labels:
+    app.kubernetes.io/name: web-bff-customers
+    app.kubernetes.io/component: bff
+    app.kubernetes.io/part-of: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web-bff-customers
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: web-bff-customers
+        app.kubernetes.io/component: bff
+    spec:
+      containers:
+        - name: web-bff
+          # Nom logique : newName/newTag sont poses par l'overlay (images: dans kustomization.yaml)
+          image: web-bff
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: web-bff-customers-config
+            # OIDC_CLIENT_SECRET, REDIS_PASSWORD : Secret cree hors Git (bootstrap/secrets), jamais commite
+            - secretRef:
+                name: web-bff-customers-secret
+          # Contexte servlet /bff ; /management/health/** public
+          readinessProbe:
+            httpGet: { path: /bff/management/health/readiness, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /bff/management/health/liveness, port: http }
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 3
+          # Spike du 13/10 : ~200 Mi au repos, demarrage ~17 s
+          resources:
+            requests: { cpu: 100m, memory: 384Mi }
+            limits: { cpu: "1", memory: 768Mi }

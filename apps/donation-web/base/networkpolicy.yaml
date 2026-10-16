@@ -1,0 +1,20 @@
+# Isolation reseau (O2) : seuls les flux de la pile locale (reseaux Docker) sont autorises ; sortant non filtre.
+# Sans effet sur le Sandbox OpenShift (politique imposee allow-same-namespace, dette 17) ; effectif sur un cluster maitrise.
+# Les sondes du kubelet ne sont pas concernees.
+# Front : uniquement APISIX externe.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: donation-web
+  labels:
+    app.kubernetes.io/part-of: web
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: donation-web
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: apisix-external } }
+      ports:
+        - { protocol: TCP, port: 8080 }
