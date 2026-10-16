@@ -111,6 +111,7 @@ ocs apply -f bootstrap/secrets/dev/observability-grafana-secret.dev.yaml   # com
 ocs apply -f bootstrap/secrets/dev/keycloak-db-secret.dev.yaml           # PostgreSQL de Keycloak
 ocs apply -f bootstrap/secrets/dev/keycloak-admin-secret.dev.yaml        # admin de démarrage (lu aussi par l'import des realms)
 ocs apply -f bootstrap/secrets/dev/keycloak-realm-secret.dev.yaml        # secrets clients + mot de passe des utilisateurs de test
+ocs apply -f bootstrap/secrets/dev/web-bff-customers-secret.dev.yaml     # BFF K6a : secret client (= WEB_BFF_CLIENT_SECRET) + Redis
 ```
 PostgreSQL et le compte admin Keycloak ne sont créés qu'au premier démarrage : mêmes précautions que MySQL.
 

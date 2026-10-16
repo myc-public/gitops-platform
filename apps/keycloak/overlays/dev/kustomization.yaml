@@ -16,8 +16,9 @@ configMapGenerator:
   - name: keycloak-realm-env
     behavior: merge
     literals:
-      # Front et back-office : pas encore deployes (K6), valeurs du dev local
-      - DONATION_WEB_BASE_URL=http://localhost:3000
+      # Espace donateur (K6a) : meme Route que l'API (redirect et post-logout URI du client web-bff)
+      - DONATION_WEB_BASE_URL=https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com
+      # Back-office : pas encore deploye (K6b), valeur du dev local
       - WEB_BFF_BACKCHANNEL_URL=http://web-bff-customers:8080
       - DONATION_BACKOFFICE_BASE_URL=http://localhost:3001
       # Client de la collection E2E (code + PKCE automatise) : dev uniquement
