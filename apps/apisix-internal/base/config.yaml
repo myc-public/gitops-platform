@@ -7,6 +7,9 @@ deployment:
 apisix:
   node_listen:
     - 9080
+  # Adresses des upstreams (noms DNS) relues toutes les 10 s au lieu du TTL Docker (600 s) : un conteneur recree
+  # change d'IP, et l'ancienne IP peut etre reprise par un autre service (vu en pile le 15/10)
+  dns_resolver_valid: 10
   # Sondes (OpenShift) : /status/ready = routes chargees ; port interne au pod (ni Service, ni port publie)
   status:
     ip: 0.0.0.0
