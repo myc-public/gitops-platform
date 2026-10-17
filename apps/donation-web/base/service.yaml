@@ -1,0 +1,16 @@
+# Upstream d'APISIX externe (routes /, /profil, /assets/*)
+apiVersion: v1
+kind: Service
+metadata:
+  name: donation-web
+  labels:
+    app.kubernetes.io/name: donation-web
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: donation-web
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

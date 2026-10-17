@@ -1,0 +1,23 @@
+# BFF de l'espace donateur (K6a, DB2 : une instance par realm, meme image). Valeurs propres a l'environnement
+# (emetteur public, origine du front, OTLP) posees par l'overlay. Secrets (secret client, mot de passe Redis) :
+# web-bff-customers-secret, cree hors Git.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-bff-customers-config
+  labels:
+    app.kubernetes.io/name: web-bff-customers
+  annotations:
+    # Avant Redis (vague -1) qui lit BFF_INSTANCE (utilisateur ACL)
+    argocd.argoproj.io/sync-wave: "-2"
+data:
+  SERVER_PORT: "8080"
+  # Prefixe des cles Redis et utilisateur ACL ; aussi le nom du Service (URL de back-channel du realm)
+  BFF_INSTANCE: "web-bff-customers"
+  OIDC_CLIENT_ID: "web-bff"
+  # Endpoints appeles par le serveur (token, cles, userinfo) : en interne, sans passer par les passerelles
+  OIDC_INTERNAL_URI: "http://keycloak:8080/realms/myc-customers"
+  # DB7 : l'API uniquement par APISIX interne (JWT et scopes verifies)
+  API_BASE_URL: "http://apisix-internal:9080"
+  REDIS_HOST: "web-bff-redis"
+  REDIS_PORT: "6379"
