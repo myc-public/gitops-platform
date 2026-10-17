@@ -1,0 +1,65 @@
+# Sessions des BFF (DB5, D6-10) : sans persistance (perte = reconnexion), maxmemory + noeviction (aucune session
+# evincee : nouvelle connexion 503 quand plein), compte default desactive, un utilisateur ACL par instance limite a
+# ses cles, sans commandes dangereuses. Meme commande que le Compose du BFF (web-bff/local/compose.yaml).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-bff-redis
+  labels:
+    app.kubernetes.io/name: web-bff-redis
+    app.kubernetes.io/component: session-store
+    app.kubernetes.io/part-of: web
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web-bff-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: web-bff-redis
+        app.kubernetes.io/component: session-store
+    spec:
+      containers:
+        - name: redis
+          # Image Red Hat (UID aleatoire OpenShift), epinglee par digest (tag c9s) : meme image que la pile locale
+          image: quay.io/sclorg/redis-7-c9s@sha256:d772acab11507231a2b152850f47c8b9b859dedb6652ca624949e97cb28c5e6f
+          command:
+            - bash
+            - -c
+            # Variables lues dans le conteneur : le mot de passe n'apparait ni dans Git ni dans la spec du pod
+            - >-
+              exec redis-server --save '' --appendonly no --maxmemory 64mb --maxmemory-policy noeviction
+              --user default off
+              --user "$BFF_INSTANCE" on ">$REDIS_PASSWORD" "~$BFF_INSTANCE:*" '&*' +@all -@dangerous +info
+          ports:
+            - name: redis
+              containerPort: 6379
+              protocol: TCP
+          env:
+            - name: BFF_INSTANCE
+              valueFrom:
+                configMapKeyRef: { name: web-bff-customers-config, key: BFF_INSTANCE }
+            # Meme Secret que le BFF : une seule source de verite pour le mot de passe
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: web-bff-customers-secret, key: REDIS_PASSWORD }
+          readinessProbe:
+            # Pret = l'utilisateur de l'instance s'authentifie (REDISCLI_AUTH : mot de passe hors ligne de commande)
+            exec:
+              command: [/bin/sh, -c, 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --user "$BFF_INSTANCE" ping | grep -q PONG']
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            # Vivant = le port repond : ne depend pas des identifiants
+            tcpSocket: { port: redis }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+          # maxmemory 64 Mo + surcout de Redis sous la limite
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { cpu: 200m, memory: 128Mi }

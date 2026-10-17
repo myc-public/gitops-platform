@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gregorie769-dev
+resources:
+  - ../../base
+# Valeurs propres a l'environnement : la base reste neutre, chaque overlay injecte les siennes
+patches:
+  - target: { kind: ConfigMap, name: web-bff-customers-config }
+    patch: |-
+      - op: add
+        path: /data/SPRING_PROFILES_ACTIVE
+        value: dev
+      # iss des tokens = URL publique (APISIX externe), comme l'API ; endpoints du navigateur publics
+      - op: add
+        path: /data/OIDC_ISSUER_URI
+        value: https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com/realms/myc-customers
+      # DB8 : origine du front autorisee pour les mutations (meme Route que l'API)
+      - op: add
+        path: /data/BFF_ALLOWED_ORIGINS
+        value: https://donation-gregorie769-dev.apps.rm3.7wse.p1.openshiftapps.com
+      # Observabilite (DB11) : traces / metriques / logs en OTLP vers la stack otel-lgtm (apps/observability)
+      - op: add
+        path: /data/OTLP_ENDPOINT
+        value: http://otel-lgtm:4318
+      - op: add
+        path: /data/OTLP_EXPORT_ENABLED
+        value: "true"
+images:
+  - name: web-bff
+    newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/web-bff
+    # Ligne mise a jour automatiquement par Jenkins (stage "Update GitOps") : ne pas editer a la main
+    newTag: init

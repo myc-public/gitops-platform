@@ -1,0 +1,44 @@
+# Front de l'espace donateur (K6a, DF2) : fichiers statiques servis par nginx UBI (non-root, port 8080), sans
+# secret, sans token, sans configuration par environnement (DF4) ; appelle /bff/... sur sa propre origine.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: donation-web
+  labels:
+    app.kubernetes.io/name: donation-web
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: donation-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: donation-web
+        app.kubernetes.io/component: frontend
+    spec:
+      containers:
+        - name: nginx
+          # Nom logique : newName/newTag sont poses par l'overlay (images: dans kustomization.yaml)
+          image: donation-web
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          # /healthz : jamais route par APISIX externe (liste fermee)
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 2
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+          # worker_processes auto : un worker par coeur du noeud, quelques Mo chacun
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 200m, memory: 128Mi }
