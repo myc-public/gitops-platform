@@ -29,4 +29,4 @@ images:
   - name: web-bff
     newName: image-registry.openshift-image-registry.svc:5000/gregorie769-dev/web-bff
     # Ligne mise a jour automatiquement par Jenkins (stage "Update GitOps") : ne pas editer a la main
-    newTag: init
+    newTag: 0.1.0-SNAPSHOT-7d56b57-b5
