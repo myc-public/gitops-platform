@@ -10,7 +10,7 @@ Commandes en PowerShell. `ocs` = `oc --kubeconfig "$HOME\.kube\sandbox.config"` 
 | Élément | Valeur de référence |
 |---|---|
 | Outils | `oc`, `kubectl`, `terraform`, Docker Desktop, minikube v1.37, 7-Zip, `cloudflared` |
-| minikube | profil `minikube`, driver docker, 2 CPU, 3 Go, Kubernetes v1.34.0 |
+| minikube | profil `argocd` (contexte `argocd`), driver docker, 2 CPU, 4 Go (3 Go saturés avec 8 applications), Kubernetes v1.34.0 |
 | Sauvegarde | `D:\backup\socle-sandbox-v3-<date>\` : `fichiers-locaux.7z` (chiffré, en-têtes compris : fichiers hors Git, dump MySQL, mémoire Claude), `nexus-data.tgz` |
 | Dépôts | `myc-public/*` clonés sous `D:\workspace\public` |
 
@@ -75,11 +75,11 @@ Le digest de `apisix-coraza` change à chaque reconstruction : le reporter (PR) 
 ## 4. Argo CD (minikube)
 
 ```powershell
-minikube start --driver=docker --cpus=2 --memory=3072 --kubernetes-version=v1.34.0
+minikube start -p argocd --driver=docker --cpus=2 --memory=4096 --kubernetes-version=v1.34.0
 cd D:\workspace\public\gitops-platform
-k --context minikube apply --server-side --force-conflicts -k bootstrap/minikube-argocd/install
-k --context minikube apply --server-side --field-manager=gitops-bootstrap -f bootstrap/minikube-argocd/argocd-cm-inclusions.yaml
-k --context minikube get pods -n argocd                   # 6 pods 1/1 (dex à 0 réplica, voulu)
+k --context argocd apply --server-side --force-conflicts -k bootstrap/minikube-argocd/install
+k --context argocd apply --server-side --field-manager=gitops-bootstrap -f bootstrap/minikube-argocd/argocd-cm-inclusions.yaml
+k --context argocd get pods -n argocd                   # 6 pods 1/1 (dex à 0 réplica, voulu)
 ```
 
 ## 5. Identité d'Argo CD sur le cluster
@@ -96,7 +96,7 @@ ocs get secret argocd-deployer-token -o jsonpath='{.data.ca\.crt}'  # -> caData 
 ```
 Compléter la copie hors Git de `bootstrap/minikube-argocd/cluster-secret.example.yaml` (`server` = URL d'API de l'étape 2, `bearerToken`, `caData`), puis :
 ```powershell
-k --context minikube apply -f <copie-hors-depot>.yaml
+k --context argocd apply -f <copie-hors-depot>.yaml
 ```
 
 ## 6. Secrets applicatifs (hors Git)
@@ -124,8 +124,8 @@ Reconstruction **depuis un tag** (code plus ancien que `develop`) : construire a
 ## 8. App-of-apps
 
 ```powershell
-k --context minikube apply -f bootstrap/root.yaml
-k --context minikube get applications -n argocd           # root + donation-api-dev + observability-dev : Synced / Healthy (≈ 3 min)
+k --context argocd apply -f bootstrap/root.yaml
+k --context argocd get applications -n argocd           # root + donation-api-dev + observability-dev : Synced / Healthy (≈ 3 min)
 ```
 `observability-dev` déploie otel-lgtm (Grafana, Prometheus, Loki, Tempo) avec le dashboard `donation-api — Service` et les 7 alertes provisionnés depuis Git (`apps/observability/base/grafana`) : rien à restaurer, l'historique de télémétrie n'est pas sauvegardé.
 Piège connu : alertes en `plugin not registered` → vérifier `GF_PLUGINS_PREINSTALL_AUTO_UPDATE=false` dans `apps/observability/base/deployment.yaml` (mise à jour des plugins impossible sous UID aléatoire).
@@ -141,7 +141,7 @@ La chaine securisee n'a qu'une entree publique : la Route `donation` (APISIX ext
 `/management` et `/docs` ne sont pas exposes : la sante de l'API se controle de l'interieur
 (`exec` : `oc --kubeconfig ...`, la fonction `ocs` avale le `--`).
 ```powershell
-k --context minikube get applications -n argocd           # toutes Synced / Healthy
+k --context argocd get applications -n argocd           # toutes Synced / Healthy
 ocs get pods                                              # tout 1/1 (hors builds et Job keycloak-config termine)
 ocs get routes -o custom-columns=NOM:.metadata.name,TLS:.spec.tls.termination   # donation, grafana, jenkins (edge)
 oc --kubeconfig "$HOME\.kube\sandbox.config" exec deploy/donation-api -- curl -s localhost:8080/management/health      # {"status":"UP"...}
@@ -170,8 +170,8 @@ Consigner le résultat dans `jenkins-on-openshift-with-terraform/docs/ROADMAP.md
 Le Developer Sandbox met à 0 les déploiements après ~12 h de fonctionnement, et Argo CD (sur minikube, hors du cluster)
 ne les relance que lorsqu'il tourne (dette 19). Avant chaque session :
 ```powershell
-minikube start                                            # Argo CD reprend la main
-k --context minikube get applications -n argocd           # attendre Synced / Healthy (quelques minutes)
+minikube start -p argocd                                 # Argo CD reprend la main
+k --context argocd get applications -n argocd           # attendre Synced / Healthy (quelques minutes)
 ocs get deploy                                            # tout à 1/1, sauf peut-être jenkins
 ```
 - **Jenkins à 0** (géré par Terraform, jamais relancé par Argo) : `terraform plan -target=kubernetes_deployment.jenkins -out=jenkins.tfplan`,

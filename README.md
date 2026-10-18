@@ -31,7 +31,7 @@ Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce so
 
 > **Reconstruction complète sur un nouveau cluster** (installation d'Argo CD comprise) : suivre [`REBUILD.md`](REBUILD.md), point d'entrée unique.
 
-> `k` est le raccourci de `kubectl` fourni par minikube ; `ocs` est la fonction qui cible le Sandbox (kubeconfig `sandbox.config`).
+> `k` est le raccourci de `kubectl` fourni par minikube (profil `argocd`, contexte `argocd` : `function k { minikube -p argocd kubectl -- --context=argocd @args }` dans le profil PowerShell) ; `ocs` est la fonction qui cible le Sandbox (kubeconfig `sandbox.config`).
 
 1. **Sandbox** : identité d'Argo CD (ServiceAccount `argocd-deployer`, rôle `edit` limité à `gregorie769-dev`), voir `bootstrap/sandbox-cluster/README.md`.
    ```powershell
@@ -40,11 +40,11 @@ Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce so
 2. **Minikube** : Secret de cluster `sandbox-gregorie769-dev` dans `argocd` (token de `argocd-deployer`), **hors Git**. Modèle : `bootstrap/minikube-argocd/cluster-secret.example.yaml` (à copier hors du dépôt, compléter, puis `apply -f`).
 3. **Minikube** : restreindre les types de ressources surveillés par Argo CD sur le Sandbox (`resource.inclusions`). Sans cette liste blanche, le cache Argo CD échoue sur les types que le Sandbox refuse de lister (`roles`, `podtemplates`, CRD OpenShift AI...) et les Applications restent en `Unknown`.
    ```powershell
-   k --context minikube apply --server-side --field-manager=gitops-bootstrap -f bootstrap/minikube-argocd/argocd-cm-inclusions.yaml
+   k --context argocd apply --server-side --field-manager=gitops-bootstrap -f bootstrap/minikube-argocd/argocd-cm-inclusions.yaml
    ```
 4. **Minikube** : lancer l'app-of-apps. Argo CD crée ensuite AppProject + ApplicationSet + Applications (namespace et nom : cf. `bootstrap/root.yaml`).
    ```powershell
-   k --context minikube apply -f bootstrap/root.yaml
+   k --context argocd apply -f bootstrap/root.yaml
    ```
 5. **Sandbox** : Secret `donation-api-db-secret` (`DB_USER`, `DB_PASSWORD`), **hors Git**, partagé par l'API et MySQL. Modèle : `bootstrap/secrets/dev/donation-api-db-secret.example.yaml` (à copier hors du dépôt, compléter, puis `apply -f`).
    ```powershell
