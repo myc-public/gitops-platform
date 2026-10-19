@@ -29,7 +29,7 @@ gitops-platform/
 
 Ces ressources ne peuvent pas être synchronisées par Argo CD lui-même : ce sont elles qui lui donnent accès au cluster (paradoxe d'amorçage).
 
-> **Reconstruction complète sur un nouveau cluster** (installation d'Argo CD comprise) : suivre [`REBUILD.md`](REBUILD.md), point d'entrée unique.
+> **Reconstruction complète sur un nouveau cluster** (installation d'Argo CD comprise) : suivre [`runbooks/reconstruction.md`](https://github.com/myc-public/platform-handbook/blob/develop/runbooks/reconstruction.md) de `platform-handbook`, point d'entrée unique.
 
 > `k` est le raccourci de `kubectl` fourni par minikube (profil `argocd`, contexte `argocd` : `function k { minikube -p argocd kubectl -- --context=argocd @args }` dans le profil PowerShell) ; `ocs` est la fonction qui cible le Sandbox (kubeconfig `sandbox.config`).
 
