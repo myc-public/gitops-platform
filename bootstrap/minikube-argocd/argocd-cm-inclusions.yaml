@@ -5,7 +5,7 @@
 # Toute ressource non listee est ignoree => regle "tout" obligatoire pour minikube (in-cluster), sinon root casse.
 # Applique en server-side apply avec un field manager dedie : seule la cle resource.inclusions est possedee,
 # les autres cles d'argocd-cm (issues de l'installation) ne sont pas touchees :
-#   kubectl --context minikube apply --server-side --field-manager=gitops-bootstrap -f bootstrap/minikube-argocd/argocd-cm-inclusions.yaml
+#   kubectl --context argocd apply --server-side --field-manager=gitops-bootstrap -f bootstrap/minikube-argocd/argocd-cm-inclusions.yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:

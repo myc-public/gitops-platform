@@ -35,8 +35,9 @@ def walk_groups(groups, parent=""):
         yield from walk_groups(g.get("subGroups"), path)
 
 
-for file in sorted(ROOT.rglob("*.yaml")):
-    doc = yaml.safe_load(file.read_text(encoding="utf-8"))
+# Tous les documents de chaque fichier (manifestes a plusieurs documents, ex. networkpolicy.yaml) ; seuls les realms comptent
+for file, doc in ((f, d) for f in sorted(ROOT.rglob("*.yaml"))
+                  for d in yaml.safe_load_all(f.read_text(encoding="utf-8"))):
     if not isinstance(doc, dict) or "realm" not in doc:
         continue
     r = realms.setdefault(doc["realm"], {"realm_roles": set(), "permissions": set(), "groups": [], "users": []})
