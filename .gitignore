@@ -42,10 +42,9 @@ crash.log
 crash.*.log
 
 ### others ###
-CLAUDE.md
+# Notes locales (jamais versionnees) ; README.md et CLAUDE.md sont versionnes (platform-handbook/CONTRIBUER.md)
 README_local.md
-CHANGELOG.md
-docs
+CLAUDE.local.md
 .log
 bootstrap/secrets/**/*.yaml
 !bootstrap/secrets/**/*.example.yaml
