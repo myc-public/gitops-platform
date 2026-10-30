@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-data
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/component: broker
+    app.kubernetes.io/part-of: events
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    # Jamais supprimee par Argo CD : les topics survivent a une suppression de l'Application
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # Pas de storageClassName : classe par defaut du cluster => manifeste portable
+  resources:
+    requests:
+      storage: 5Gi

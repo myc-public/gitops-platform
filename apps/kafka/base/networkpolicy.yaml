@@ -1,0 +1,19 @@
+# Isolation reseau : seuls Kafka Connect (EDA4) et le Job des topics joignent le broker ; sortant non filtre.
+# Sans effet sur le Sandbox OpenShift (dette 17) ; effectif sur un cluster maitrise.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kafka
+  labels:
+    app.kubernetes.io/part-of: events
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: kafka-connect } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: kafka-topics } }
+      ports:
+        - { protocol: TCP, port: 9092 }

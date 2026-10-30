@@ -1,0 +1,34 @@
+# Kafka en mode pile (EDA2) : memes fichiers que le deploiement (apps/kafka/base), aucun port publie.
+# Verification : docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe
+services:
+  kafka:
+    image: apache/kafka@sha256:852a0d49fc4e656b022e7f23785411802c9a088c78a7c5e39f33969de9c227a7   # 4.3.2
+    env_file: ../../apps/kafka/base/kafka.env
+    mem_limit: 1g
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks: [events]
+    healthcheck:
+      # Meme controle que la readinessProbe : le port repond
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/9092'"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+      start_period: 10s
+  # Equivalent du Job kafka-topics : relancer avec docker compose run --rm kafka-topics
+  kafka-topics:
+    image: apache/kafka@sha256:852a0d49fc4e656b022e7f23785411802c9a088c78a7c5e39f33969de9c227a7   # 4.3.2
+    command: [sh, /scripts/create-topics.sh]
+    volumes:
+      - ../../apps/kafka/base/create-topics.sh:/scripts/create-topics.sh:ro
+    networks: [events]
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+volumes:
+  kafka-data:
+
+networks:
+  events:
+    name: donation-pile-events

@@ -14,6 +14,7 @@ include:
   - path: [../../../web-bff/local/compose.yaml, web-bff.pile.yaml]
     env_file: .env
   - path: donation-web.pile.yaml
+  - path: kafka.pile.yaml
 
 services:
   apisix-ext:
@@ -64,6 +65,7 @@ services:
 #              Keycloak -> BFF (back-channel logout)
 #   sessions : web-bff-customers -> Redis
 #   data-api / data-idp : chaque base n'est joignable que par son service
+#   events   : Kafka <- kafka-topics, puis Kafka Connect (EDA4)
 networks:
   edge:
     name: donation-pile-edge

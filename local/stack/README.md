@@ -63,6 +63,7 @@ docker compose run --rm keycloak-config    # reappliquer le realm apres une modi
 docker compose up -d --build donation-api       # nouvelle version de l'API (apres mvn package)
 docker compose up -d --build web-bff-customers  # nouvelle version du BFF (apres mvn package)
 docker compose up -d --build donation-web       # nouvelle version du front (apres npm run build)
+docker compose run --rm kafka-topics       # reappliquer les topics apres une modification de create-topics.sh
 docker compose down                        # supprimer les conteneurs (donnees conservees)
 docker compose down -v                     # remise a zero complete (donnees supprimees)
 ```
