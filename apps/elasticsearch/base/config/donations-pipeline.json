@@ -1,0 +1,7 @@
+{
+  "description": "indexedAt pour la latence de bout en bout (DE29), date de naissance jamais indexee dans les dons (DE22)",
+  "processors": [
+    { "set": { "field": "indexedAt", "value": "{{_ingest.timestamp}}" } },
+    { "remove": { "field": "payload.dateOfBirth", "ignore_missing": true } }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "description": "indexedAt pour la latence de bout en bout (DE29)",
+  "processors": [
+    { "set": { "field": "indexedAt", "value": "{{_ingest.timestamp}}" } }
+  ]
+}

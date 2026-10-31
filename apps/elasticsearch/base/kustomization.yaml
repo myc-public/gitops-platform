@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - config-job.yaml
+  - networkpolicy.yaml
+# Fichiers lus aussi par la pile locale (local/stack/elasticsearch.pile.yaml) : aucune copie
+configMapGenerator:
+  - name: elasticsearch-env
+    envs:
+      - elasticsearch.env
+  - name: elasticsearch-scripts
+    files:
+      - apply-config.sh
+  - name: elasticsearch-config
+    files:
+      - config/donors-pipeline.json
+      - config/donations-pipeline.json
+      - config/donors-v1.json
+      - config/donations-v1.json
+      - config/eda-sink-role.json

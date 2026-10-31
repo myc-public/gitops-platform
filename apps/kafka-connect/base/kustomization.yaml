@@ -16,3 +16,4 @@ configMapGenerator:
   - name: kafka-connect-connectors
     files:
       - connectors/donation-outbox.json
+      - connectors/donation-es.json

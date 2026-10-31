@@ -1,0 +1,21 @@
+{
+  "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+  "tasks.max": "1",
+  "topics": "donor.events,donation.events",
+  "connection.url": "http://elasticsearch:9200",
+  "connection.username": "eda-sink",
+  "connection.password": "${file:/etc/kafka-connect/secrets/connect.properties:es.password}",
+  "key.ignore": "false",
+  "schema.ignore": "true",
+  "behavior.on.null.values": "delete",
+  "behavior.on.malformed.documents": "warn",
+  "max.retries": "12",
+  "retry.backoff.ms": "1000",
+  "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+  "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+  "value.converter.schemas.enable": "false",
+  "errors.tolerance": "all",
+  "errors.deadletterqueue.topic.name": "events.dlt",
+  "errors.deadletterqueue.topic.replication.factor": "1",
+  "errors.deadletterqueue.context.headers.enable": "true"
+}

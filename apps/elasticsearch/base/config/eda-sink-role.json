@@ -1,0 +1,9 @@
+{
+  "cluster": ["monitor"],
+  "indices": [
+    {
+      "names": ["donors-*", "donations-*", "donor.events", "donation.events"],
+      "privileges": ["write", "view_index_metadata"]
+    }
+  ]
+}

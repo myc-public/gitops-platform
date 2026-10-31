@@ -1,0 +1,46 @@
+# Applique pipelines, index, role et compte du sink apres chaque synchronisation Argo CD (hook PostSync). Script rejouable.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elasticsearch-config
+  labels:
+    app.kubernetes.io/name: elasticsearch-config
+    app.kubernetes.io/component: search
+    app.kubernetes.io/part-of: events
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: elasticsearch-config
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: elasticsearch-config
+          image: docker.io/library/elasticsearch@sha256:ef5cafd961d7e273f13fed8def82e63c5ae0491106b5eecb5a69aa12d64f089b
+          command: [sh, /scripts/apply-config.sh]
+          envFrom:
+            # ELASTIC_PASSWORD, ES_SINK_PASSWORD, cree hors Git
+            - secretRef:
+                name: elasticsearch-secret
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+      volumes:
+        - name: scripts
+          configMap:
+            name: elasticsearch-scripts
+        - name: config
+          configMap:
+            name: elasticsearch-config

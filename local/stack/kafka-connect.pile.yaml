@@ -1,4 +1,4 @@
-# Kafka Connect en mode pile (EDA4) : Debezium, puis le sink Elasticsearch (EDA5). Memes fichiers que le deploiement
+# Kafka Connect en mode pile (EDA4, EDA5) : Debezium et le sink Elasticsearch. Memes fichiers que le deploiement
 # (apps/kafka-connect/base, images/kafka-connect), REST de Connect sur aucun port publie.
 # Etat : docker compose exec kafka-connect curl -s http://localhost:8083/connectors/donation-outbox/status
 services:
@@ -9,12 +9,14 @@ services:
     mem_limit: 1g
     volumes:
       - ./connect.properties:/etc/kafka-connect/secrets/connect.properties:ro
-    networks: [events, data-api]
+    networks: [events, data-api, search]
     depends_on:
       kafka-topics:
         condition: service_completed_successfully
       donation-api-mysql:
         condition: service_healthy
+      elasticsearch-config:
+        condition: service_completed_successfully
     healthcheck:
       # Meme controle que la readinessProbe
       test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors > /dev/null"]
@@ -39,3 +41,5 @@ networks:
     name: donation-pile-events
   data-api:
     name: donation-pile-data-api
+  search:
+    name: donation-pile-search

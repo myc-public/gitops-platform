@@ -15,6 +15,7 @@ include:
     env_file: .env
   - path: donation-web.pile.yaml
   - path: kafka.pile.yaml
+  - path: elasticsearch.pile.yaml
   - path: kafka-connect.pile.yaml
 
 services:
@@ -67,6 +68,7 @@ services:
 #   sessions : web-bff-customers -> Redis
 #   data-api / data-idp : chaque base n'est joignable que par son service (data-api : aussi Kafka Connect, CDC)
 #   events   : Kafka <- kafka-topics, Kafka Connect ; Kafka Connect <- kafka-connect-config
+#   search   : Elasticsearch <- elasticsearch-config, Kafka Connect
 networks:
   edge:
     name: donation-pile-edge
