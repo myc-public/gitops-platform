@@ -1,3 +1,4 @@
 # Copier en local/stack/connect.properties (ignore par Git) : lu par Kafka Connect (FileConfigProvider).
-# Meme valeur que DEBEZIUM_DB_PASSWORD dans .env
+# Memes valeurs que dans .env : DEBEZIUM_DB_PASSWORD, ES_SINK_PASSWORD
 db.password=
+es.password=

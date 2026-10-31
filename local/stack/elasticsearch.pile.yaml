@@ -1,0 +1,39 @@
+# Elasticsearch en mode pile (EDA5) : memes fichiers que le deploiement (apps/elasticsearch/base), aucun port publie.
+# Comptes : docker compose exec elasticsearch sh -c 'curl -s -u "elastic:$ELASTIC_PASSWORD" localhost:9200/_cat/indices'
+services:
+  elasticsearch:
+    image: elasticsearch@sha256:ef5cafd961d7e273f13fed8def82e63c5ae0491106b5eecb5a69aa12d64f089b   # 8.19.23
+    env_file: ../../apps/elasticsearch/base/elasticsearch.env
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?ELASTIC_PASSWORD absent}
+    mem_limit: 2g
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks: [search]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -f -o /dev/null -u \"elastic:$$ELASTIC_PASSWORD\" http://localhost:9200/_cluster/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 36
+      start_period: 20s
+  # Equivalent du Job elasticsearch-config : relancer avec docker compose run --rm elasticsearch-config
+  elasticsearch-config:
+    image: elasticsearch@sha256:ef5cafd961d7e273f13fed8def82e63c5ae0491106b5eecb5a69aa12d64f089b   # 8.19.23
+    command: [sh, /scripts/apply-config.sh]
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?ELASTIC_PASSWORD absent}
+      ES_SINK_PASSWORD: ${ES_SINK_PASSWORD:?ES_SINK_PASSWORD absent}
+    volumes:
+      - ../../apps/elasticsearch/base/apply-config.sh:/scripts/apply-config.sh:ro
+      - ../../apps/elasticsearch/base/config:/config:ro
+    networks: [search]
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+volumes:
+  elasticsearch-data:
+
+networks:
+  search:
+    name: donation-pile-search

@@ -1,0 +1,36 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "index.default_pipeline": "donors"
+  },
+  "aliases": {
+    "donor.events": { "is_write_index": true },
+    "donors": {}
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "eventId": { "type": "keyword" },
+      "eventType": { "type": "keyword" },
+      "eventVersion": { "type": "keyword" },
+      "occurredAt": { "type": "date" },
+      "aggregateType": { "type": "keyword" },
+      "aggregateId": { "type": "keyword" },
+      "producer": { "type": "keyword" },
+      "traceId": { "type": "keyword" },
+      "indexedAt": { "type": "date" },
+      "payload": {
+        "dynamic": "strict",
+        "properties": {
+          "lastName": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+          "firstName": { "type": "text", "fields": { "keyword": { "type": "keyword" } } },
+          "email": { "type": "keyword" },
+          "dateOfBirth": { "type": "date" },
+          "country": { "type": "keyword" },
+          "createdAt": { "type": "date" }
+        }
+      }
+    }
+  }
+}

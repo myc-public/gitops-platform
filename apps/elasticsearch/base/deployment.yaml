@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  labels:
+    app.kubernetes.io/name: elasticsearch
+    app.kubernetes.io/component: search
+    app.kubernetes.io/part-of: events
+spec:
+  replicas: 1
+  # Recreate : volume RWO, jamais deux noeuds sur le meme repertoire
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: elasticsearch
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: elasticsearch
+        app.kubernetes.io/component: search
+    spec:
+      containers:
+        - name: elasticsearch
+          # 8.19.23, epinglee par digest (ADR 0037) ; UID aleatoire OpenShift a prouver en EDA8
+          image: docker.io/library/elasticsearch@sha256:ef5cafd961d7e273f13fed8def82e63c5ae0491106b5eecb5a69aa12d64f089b
+          envFrom:
+            - configMapRef:
+                name: elasticsearch-env
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: elasticsearch-secret, key: ELASTIC_PASSWORD }
+          ports:
+            - name: http
+              containerPort: 9200
+              protocol: TCP
+          readinessProbe:
+            tcpSocket: { port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: http }
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests: { cpu: 200m, memory: 1Gi }
+            limits: { cpu: "1", memory: 2Gi }
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: elasticsearch-data
