@@ -67,6 +67,7 @@ docker compose run --rm keycloak-config    # reappliquer le realm apres une modi
 docker compose up -d --build donation-api       # nouvelle version de l'API (apres mvn package)
 docker compose up -d --build web-bff-customers  # nouvelle version du BFF (apres mvn package)
 docker compose up -d --build donation-web       # nouvelle version du front (apres npm run build)
+docker compose up -d --build donation-cqrs-api  # nouvelle version de la recherche (apres mvn package)
 docker compose run --rm kafka-topics       # reappliquer les topics apres une modification de create-topics.sh
 docker compose run --rm kafka-connect-config  # reappliquer les connecteurs apres une modification de connectors/*.json
 docker compose run --rm elasticsearch-config  # reappliquer pipelines et compte du sink (un index existant n'est pas modifie)

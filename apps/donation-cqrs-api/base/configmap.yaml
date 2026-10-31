@@ -1,0 +1,12 @@
+# Emetteur et JWKS poses par l'overlay (EDA8) : URL publique du realm, comme donation-api
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: donation-cqrs-api-config
+  labels:
+    app.kubernetes.io/name: donation-cqrs-api
+    app.kubernetes.io/part-of: inner-apis
+data:
+  ELASTICSEARCH_URL: "http://elasticsearch:9200"
+  ELASTICSEARCH_USERNAME: "eda-read"
+  OIDC_INTERNAL_JWK_SET_URI: "http://keycloak:8080/realms/myc-internal/protocol/openid-connect/certs"

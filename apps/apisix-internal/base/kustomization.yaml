@@ -16,3 +16,4 @@ configMapGenerator:
     literals:
       - KEYCLOAK_INTERNAL_URL=http://keycloak:8080
       - DONATION_API_UPSTREAM=donation-api:8080
+      - DONATION_CQRS_API_UPSTREAM=donation-cqrs-api:8080
