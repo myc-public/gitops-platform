@@ -3,6 +3,10 @@
 services:
   donation-api-mysql:
     ports: !reset []
+    environment:
+      DEBEZIUM_DB_PASSWORD: ${DEBEZIUM_DB_PASSWORD:?DEBEZIUM_DB_PASSWORD absent}
+    volumes:
+      - ../../apps/donation-api/base/mysql/80-debezium-user.sh:/opt/app-root/src/mysql-init/80-debezium-user.sh:ro
     networks: [data-api]
   donation-api:
     profiles: !reset []

@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+  - connectors-job.yaml
+  - networkpolicy.yaml
+# Fichiers lus aussi par la pile locale (local/stack/kafka-connect.pile.yaml) : aucune copie
+configMapGenerator:
+  - name: kafka-connect-config
+    envs:
+      - connect.env
+  - name: kafka-connect-scripts
+    files:
+      - apply-connectors.sh
+  - name: kafka-connect-connectors
+    files:
+      - connectors/donation-outbox.json

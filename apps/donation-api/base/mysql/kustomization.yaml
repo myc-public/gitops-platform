@@ -4,3 +4,8 @@ resources:
   - pvc.yaml
   - deployment.yaml
   - service.yaml
+# Script lu aussi par la pile locale (local/stack/api.pile.yaml) : aucune copie
+configMapGenerator:
+  - name: donation-api-mysql-init
+    files:
+      - 80-debezium-user.sh

@@ -15,6 +15,7 @@ include:
     env_file: .env
   - path: donation-web.pile.yaml
   - path: kafka.pile.yaml
+  - path: kafka-connect.pile.yaml
 
 services:
   apisix-ext:
@@ -64,8 +65,8 @@ services:
 #   idp      : Keycloak <- APISIX externe (login), APISIX interne et API (JWKS), BFF (token), keycloak-config, Mailpit ;
 #              Keycloak -> BFF (back-channel logout)
 #   sessions : web-bff-customers -> Redis
-#   data-api / data-idp : chaque base n'est joignable que par son service
-#   events   : Kafka <- kafka-topics, puis Kafka Connect (EDA4)
+#   data-api / data-idp : chaque base n'est joignable que par son service (data-api : aussi Kafka Connect, CDC)
+#   events   : Kafka <- kafka-topics, Kafka Connect ; Kafka Connect <- kafka-connect-config
 networks:
   edge:
     name: donation-pile-edge

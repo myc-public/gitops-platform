@@ -34,6 +34,10 @@ cd D:\workspace\public\gitops-platform\local\stack
 Copy-Item .env.example .env
 notepad .env
 
+# Mot de passe du compte Debezium pour Kafka Connect : meme valeur que DEBEZIUM_DB_PASSWORD dans .env
+if (-not (Test-Path connect.properties)) { Copy-Item connect.properties.example connect.properties }
+notepad connect.properties
+
 # 2. Certificat TLS local auto-signe (jamais commite : local/stack/tls/ est ignore par Git)
 New-Item -ItemType Directory -Force tls | Out-Null
 & "C:\Program Files\Git\usr\bin\openssl.exe" req -x509 -newkey rsa:2048 -nodes -days 365 `
@@ -64,6 +68,7 @@ docker compose up -d --build donation-api       # nouvelle version de l'API (apr
 docker compose up -d --build web-bff-customers  # nouvelle version du BFF (apres mvn package)
 docker compose up -d --build donation-web       # nouvelle version du front (apres npm run build)
 docker compose run --rm kafka-topics       # reappliquer les topics apres une modification de create-topics.sh
+docker compose run --rm kafka-connect-config  # reappliquer les connecteurs apres une modification de connectors/*.json
 docker compose down                        # supprimer les conteneurs (donnees conservees)
 docker compose down -v                     # remise a zero complete (donnees supprimees)
 ```

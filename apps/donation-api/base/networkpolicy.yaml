@@ -1,7 +1,7 @@
 # Isolation reseau (O2) : seuls les flux de la pile locale (reseaux Docker) sont autorises ; sortant non filtre.
 # Sans effet sur le Sandbox OpenShift (politique imposee allow-same-namespace, dette 17) ; effectif sur un cluster maitrise.
 # Les sondes du kubelet ne sont pas concernees.
-# API : uniquement APISIX interne (plus d'acces direct depuis le routeur). MySQL : uniquement l'API.
+# API : uniquement APISIX interne (plus d'acces direct depuis le routeur). MySQL : l'API et Kafka Connect (CDC).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -33,5 +33,6 @@ spec:
   ingress:
     - from:
         - podSelector: { matchLabels: { app.kubernetes.io/name: donation-api } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: kafka-connect } }
       ports:
         - { protocol: TCP, port: 3306 }
