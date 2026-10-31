@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-connect
+  labels:
+    app.kubernetes.io/name: kafka-connect
+    app.kubernetes.io/component: cdc
+    app.kubernetes.io/part-of: events
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-connect
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-connect
+        app.kubernetes.io/component: cdc
+    spec:
+      containers:
+        - name: kafka-connect
+          # images/kafka-connect : nom et digest poses par l'overlay (EDA8)
+          image: kafka-connect
+          envFrom:
+            - configMapRef:
+                name: kafka-connect-config
+          ports:
+            - name: rest
+              containerPort: 8083
+              protocol: TCP
+          readinessProbe:
+            httpGet: { path: /connectors, port: rest }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: rest }
+            initialDelaySeconds: 90
+            periodSeconds: 20
+            timeoutSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          volumeMounts:
+            # connect.properties, lu par FileConfigProvider (DE7), cree hors Git
+            - name: secrets
+              mountPath: /etc/kafka-connect/secrets
+              readOnly: true
+      volumes:
+        - name: secrets
+          secret:
+            secretName: debezium-secret
+            items:
+              - { key: connect.properties, path: connect.properties }

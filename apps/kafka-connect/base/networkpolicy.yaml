@@ -1,0 +1,18 @@
+# Isolation reseau : le REST de Connect n'est joignable que par le Job des connecteurs ; sortant non filtre.
+# Sans effet sur le Sandbox OpenShift (dette 17) ; effectif sur un cluster maitrise.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kafka-connect
+  labels:
+    app.kubernetes.io/part-of: events
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-connect
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: kafka-connect-config } }
+      ports:
+        - { protocol: TCP, port: 8083 }

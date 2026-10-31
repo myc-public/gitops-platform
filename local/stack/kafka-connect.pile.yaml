@@ -1,0 +1,41 @@
+# Kafka Connect en mode pile (EDA4) : Debezium, puis le sink Elasticsearch (EDA5). Memes fichiers que le deploiement
+# (apps/kafka-connect/base, images/kafka-connect), REST de Connect sur aucun port publie.
+# Etat : docker compose exec kafka-connect curl -s http://localhost:8083/connectors/donation-outbox/status
+services:
+  kafka-connect:
+    build: ../../images/kafka-connect
+    image: kafka-connect:local
+    env_file: ../../apps/kafka-connect/base/connect.env
+    mem_limit: 1g
+    volumes:
+      - ./connect.properties:/etc/kafka-connect/secrets/connect.properties:ro
+    networks: [events, data-api]
+    depends_on:
+      kafka-topics:
+        condition: service_completed_successfully
+      donation-api-mysql:
+        condition: service_healthy
+    healthcheck:
+      # Meme controle que la readinessProbe
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors > /dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 36
+      start_period: 15s
+  # Equivalent du Job kafka-connect-config : relancer avec docker compose run --rm kafka-connect-config
+  kafka-connect-config:
+    image: kafka-connect:local
+    command: [sh, /scripts/apply-connectors.sh]
+    volumes:
+      - ../../apps/kafka-connect/base/apply-connectors.sh:/scripts/apply-connectors.sh:ro
+      - ../../apps/kafka-connect/base/connectors:/connectors:ro
+    networks: [events]
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+
+networks:
+  events:
+    name: donation-pile-events
+  data-api:
+    name: donation-pile-data-api

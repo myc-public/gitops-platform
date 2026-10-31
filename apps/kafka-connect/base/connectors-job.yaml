@@ -1,0 +1,43 @@
+# Applique les connecteurs apres chaque synchronisation Argo CD (hook PostSync). PUT idempotent.
+# Un changement d'un fichier change le nom de sa ConfigMap (suffixe de hash) => OutOfSync => synchronisation => nouveau Job.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-connect-config
+  labels:
+    app.kubernetes.io/name: kafka-connect-config
+    app.kubernetes.io/component: cdc
+    app.kubernetes.io/part-of: events
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-connect-config
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kafka-connect-config
+          image: kafka-connect
+          command: [sh, /scripts/apply-connectors.sh]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: connectors
+              mountPath: /connectors
+              readOnly: true
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+      volumes:
+        - name: scripts
+          configMap:
+            name: kafka-connect-scripts
+        - name: connectors
+          configMap:
+            name: kafka-connect-connectors

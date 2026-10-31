@@ -53,3 +53,6 @@ donation-api-db-secret.dev.yaml
 local/**/.env
 # Mode pile : certificat TLS local (auto-signe, genere par local/stack/README.md)
 local/stack/tls/
+
+### Pile locale : mot de passe du compte Debezium ###
+local/stack/connect.properties

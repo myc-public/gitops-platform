@@ -42,9 +42,16 @@ spec:
               valueFrom:
                 secretKeyRef: { name: donation-api-db-secret, key: DB_PASSWORD }
             # Pas de MYSQL_ROOT_PASSWORD : root reste limite au socket local, l'API n'utilise que DB_USER
+            # Compte Debezium : secret optionnel, sans lui l'etape est ignoree (80-debezium-user.sh)
+            - name: DEBEZIUM_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: debezium-secret, key: DEBEZIUM_DB_PASSWORD, optional: true }
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql/data
+            - name: init
+              mountPath: /opt/app-root/src/mysql-init
+              readOnly: true
           readinessProbe:
             # Pret = MySQL accepte une connexion de l'utilisateur applicatif (MYSQL_PWD : mot de passe hors ligne de commande)
             exec:
@@ -65,3 +72,6 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: donation-api-mysql-data
+        - name: init
+          configMap:
+            name: donation-api-mysql-init
