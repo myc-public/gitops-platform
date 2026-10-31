@@ -21,3 +21,4 @@ configMapGenerator:
       - config/donors-v1.json
       - config/donations-v1.json
       - config/eda-sink-role.json
+      - config/eda-read-role.json

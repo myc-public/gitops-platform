@@ -1,4 +1,4 @@
-# Isolation reseau : Kafka Connect (sink) et le Job de configuration ; donation-read-api en EDA6 ; sortant non filtre.
+# Isolation reseau : Kafka Connect (sink), donation-cqrs-api et le Job de configuration ; sortant non filtre.
 # Sans effet sur le Sandbox OpenShift (dette 17) ; effectif sur un cluster maitrise.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -14,6 +14,7 @@ spec:
   ingress:
     - from:
         - podSelector: { matchLabels: { app.kubernetes.io/name: kafka-connect } }
+        - podSelector: { matchLabels: { app.kubernetes.io/name: donation-cqrs-api } }
         - podSelector: { matchLabels: { app.kubernetes.io/name: elasticsearch-config } }
       ports:
         - { protocol: TCP, port: 9200 }

@@ -23,6 +23,7 @@ services:
     environment:
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?ELASTIC_PASSWORD absent}
       ES_SINK_PASSWORD: ${ES_SINK_PASSWORD:?ES_SINK_PASSWORD absent}
+      ES_READ_PASSWORD: ${ES_READ_PASSWORD:?ES_READ_PASSWORD absent}
     volumes:
       - ../../apps/elasticsearch/base/apply-config.sh:/scripts/apply-config.sh:ro
       - ../../apps/elasticsearch/base/config:/config:ro

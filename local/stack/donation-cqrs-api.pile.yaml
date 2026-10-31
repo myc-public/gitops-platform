@@ -1,0 +1,28 @@
+# Cote lecture du CQRS en mode pile (EDA6) : jar de mvn package, meme Dockerfile que la CI, aucun port publie.
+services:
+  donation-cqrs-api:
+    build:
+      context: ../../../donation-cqrs-api
+      dockerfile: cicd/openshift/Dockerfile
+      args:
+        JAR_FILE: target/*.jar
+    image: donation-cqrs-api:local
+    environment:
+      # iss public (D5-2) ; cles lues en interne, sans passer par les passerelles
+      OIDC_INTERNAL_ISSUER_URI: ${PUBLIC_URL}/realms/myc-internal
+      OIDC_INTERNAL_JWK_SET_URI: http://keycloak:8080/realms/myc-internal/protocol/openid-connect/certs
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: eda-read
+      ELASTICSEARCH_PASSWORD: ${ES_READ_PASSWORD:?ES_READ_PASSWORD absent}
+    networks: [api, idp, search]
+    depends_on:
+      elasticsearch-config:
+        condition: service_completed_successfully
+
+networks:
+  api:
+    name: donation-pile-api
+  idp:
+    name: donation-pile-idp
+  search:
+    name: donation-pile-search

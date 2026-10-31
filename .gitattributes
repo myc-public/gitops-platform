@@ -1,0 +1,2 @@
+# Scripts montes tels quels dans des conteneurs Linux : jamais de CRLF, quel que soit core.autocrlf du poste
+*.sh text eol=lf

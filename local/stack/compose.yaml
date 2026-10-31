@@ -17,6 +17,7 @@ include:
   - path: kafka.pile.yaml
   - path: elasticsearch.pile.yaml
   - path: kafka-connect.pile.yaml
+  - path: donation-cqrs-api.pile.yaml
 
 services:
   apisix-ext:
@@ -51,6 +52,7 @@ services:
       PUBLIC_URL: ${PUBLIC_URL}
       KEYCLOAK_INTERNAL_URL: http://keycloak:8080
       DONATION_API_UPSTREAM: donation-api:8080
+      DONATION_CQRS_API_UPSTREAM: donation-cqrs-api:8080
     volumes:
       - ../../apps/apisix-internal/base/config.yaml:/usr/local/apisix/conf/config.yaml:ro
       - ../../apps/apisix-internal/base/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
@@ -68,7 +70,7 @@ services:
 #   sessions : web-bff-customers -> Redis
 #   data-api / data-idp : chaque base n'est joignable que par son service (data-api : aussi Kafka Connect, CDC)
 #   events   : Kafka <- kafka-topics, Kafka Connect ; Kafka Connect <- kafka-connect-config
-#   search   : Elasticsearch <- elasticsearch-config, Kafka Connect
+#   search   : Elasticsearch <- elasticsearch-config, Kafka Connect, donation-cqrs-api
 networks:
   edge:
     name: donation-pile-edge

@@ -43,4 +43,8 @@ done
 api PUT /_security/role/eda-sink --data @"$DIR/eda-sink-role.json"
 printf '{"password":"%s","roles":["eda-sink"]}' "$ES_SINK_PASSWORD" > /tmp/compte.json
 api PUT /_security/user/eda-sink --data @/tmp/compte.json
+
+api PUT /_security/role/eda-read --data @"$DIR/eda-read-role.json"
+printf '{"password":"%s","roles":["eda-read"]}' "$ES_READ_PASSWORD" > /tmp/compte.json
+api PUT /_security/user/eda-read --data @/tmp/compte.json
 rm -f /tmp/compte.json /tmp/reponse

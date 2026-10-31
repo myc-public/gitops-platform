@@ -1,0 +1,18 @@
+# Isolation reseau : uniquement APISIX interne ; sortant non filtre.
+# Sans effet sur le Sandbox OpenShift (dette 17) ; effectif sur un cluster maitrise.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: donation-cqrs-api
+  labels:
+    app.kubernetes.io/part-of: inner-apis
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: donation-cqrs-api
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: { matchLabels: { app.kubernetes.io/name: apisix-internal } }
+      ports:
+        - { protocol: TCP, port: 8080 }
