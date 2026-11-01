@@ -1,6 +1,7 @@
 {
-  "description": "indexedAt pour la latence de bout en bout (DE29)",
+  "description": "indexedAt et latencyMs pour la latence de bout en bout (DE29)",
   "processors": [
-    { "set": { "field": "indexedAt", "value": "{{_ingest.timestamp}}" } }
+    { "set": { "field": "indexedAt", "value": "{{_ingest.timestamp}}" } },
+    { "script": { "ignore_failure": true, "source": "ctx.latencyMs = ChronoUnit.MILLIS.between(ZonedDateTime.parse(ctx.occurredAt), ZonedDateTime.parse(ctx.indexedAt))" } }
   ]
 }

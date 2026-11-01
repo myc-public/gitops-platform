@@ -20,6 +20,7 @@
       "producer": { "type": "keyword" },
       "traceId": { "type": "keyword" },
       "indexedAt": { "type": "date" },
+      "latencyMs": { "type": "long" },
       "payload": {
         "dynamic": "strict",
         "properties": {

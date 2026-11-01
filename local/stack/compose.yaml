@@ -71,8 +71,8 @@ services:
 #   sessions : web-bff-customers -> Redis
 #   data-api / data-idp : chaque base n'est joignable que par son service (data-api : aussi Kafka Connect, CDC)
 #   events   : Kafka <- kafka-topics, Kafka Connect ; Kafka Connect <- kafka-connect-config
-#   search   : Elasticsearch <- elasticsearch-config, Kafka Connect, donation-cqrs-api
-#   telemetry : otel-lgtm <- API (OTLP) ; otel-lgtm -> Kafka Connect (metriques JMX)
+#   search   : Elasticsearch <- elasticsearch-config, Kafka Connect, donation-cqrs-api, otel-lgtm (Grafana)
+#   telemetry : otel-lgtm <- API et donation-cqrs-api (OTLP) ; otel-lgtm -> Kafka Connect (metriques JMX)
 networks:
   edge:
     name: donation-pile-edge

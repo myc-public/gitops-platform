@@ -1,7 +1,8 @@
 {
-  "description": "indexedAt pour la latence de bout en bout (DE29), date de naissance jamais indexee dans les dons (DE22)",
+  "description": "indexedAt et latencyMs pour la latence de bout en bout (DE29), date de naissance jamais indexee dans les dons (DE22)",
   "processors": [
     { "set": { "field": "indexedAt", "value": "{{_ingest.timestamp}}" } },
+    { "script": { "ignore_failure": true, "source": "ctx.latencyMs = ChronoUnit.MILLIS.between(ZonedDateTime.parse(ctx.occurredAt), ZonedDateTime.parse(ctx.indexedAt))" } },
     { "remove": { "field": "payload.dateOfBirth", "ignore_missing": true } }
   ]
 }
