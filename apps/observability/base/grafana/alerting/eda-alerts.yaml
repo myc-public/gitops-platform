@@ -1,0 +1,183 @@
+# Alertes de la chaine evenementielle (EDA7, roadmap/eda.md) : memes conventions que donation-api-alerts.yaml.
+# Provisionnees au demarrage de Grafana, non modifiables dans l'UI. Pas de contact point externe.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: eda
+    folder: eda
+    interval: 30s
+    rules:
+      - uid: eda-a7-retard
+        title: "A7 - EDA retard de la chaine"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # records_lag ignore les messages lus mais pas encore ecrits : le sink les garde en memoire pendant une panne.
+              # Debezium : la valeur reste figee apres le dernier evenement, seul un evenement recent compte.
+              expr: >-
+                (
+                  (sum(kafka_consumer_consumer_fetch_manager_metrics_records_lag{topic=~".*\\.events"}) or vector(0))
+                  + (sum(kafka_connect_sink_task_metrics_sink_record_active_count) or vector(0))
+                  > 100
+                )
+                or
+                (
+                  max(debezium_mysql_connector_metrics_millisecondsbehindsource) > 60000
+                  and on ()
+                  max(debezium_mysql_connector_metrics_millisecondssincelastevent) < 300000
+                )
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels: { severity: warning, service: eda }
+        annotations:
+          summary: "Plus de 100 messages en attente, ou Debezium a plus de 60 s, depuis 5 min"
+          description: "Dashboard EDA - chaine evenementielle : verifier Elasticsearch, le sink et Debezium."
+          __dashboardUid__: eda-chaine
+          __panelId__: "4"
+
+      - uid: eda-a8-latence
+        title: "A8 - EDA latence p95 > 5 s"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: elasticsearch-eda
+            model:
+              refId: A
+              query: "_exists_:latencyMs"
+              timeField: occurredAt
+              metrics:
+                - { id: "1", type: percentiles, field: latencyMs, settings: { percents: ["95"] } }
+              bucketAggs:
+                - { id: "2", type: date_histogram, field: occurredAt, settings: { interval: 5m, min_doc_count: "1" } }
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              reducer: max
+              expression: A
+              settings: { mode: dropNN }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [5000] }
+        # Sans evenement recent, rien a mesurer ; Elasticsearch arrete est signale par A7 et A11
+        noDataState: OK
+        execErrState: OK
+        for: 0s
+        labels: { severity: warning, service: eda }
+        annotations:
+          summary: "Dons indexes plus de 5 s apres leur creation (p95, 15 min)"
+          description: "Dashboard EDA - chaine evenementielle > Latence de bout en bout. Mesure sur les dons uniquement."
+          __dashboardUid__: eda-chaine
+          __panelId__: "8"
+
+      - uid: eda-a9-dlq
+        title: "A9 - EDA message en DLQ"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # Augmentation sur 5 min : l'alerte retombe meme si la DLQ reste non vide. Une relecture peut la redeclencher.
+              expr: sum(increase(kafka_connect_task_error_metrics_deadletterqueue_produce_requests[5m]))
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels: { severity: critical, service: eda }
+        annotations:
+          summary: "Au moins un message envoye en DLQ sur les 5 dernieres minutes"
+          description: "Lire le topic events.dlt (en-tetes d'erreur), corriger, puis rejouer."
+          __dashboardUid__: eda-chaine
+          __panelId__: "6"
+
+      - uid: eda-a10-connect
+        title: "A10 - EDA tache Connect arretee"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # Taches reellement actives : une tache en echec comme une metrique absente font baisser le compte
+              expr: count(kafka_connect_connector_task_metrics_running_ratio > 0.5) or vector(0)
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [2] }
+        noDataState: Alerting
+        execErrState: Error
+        for: 1m
+        labels: { severity: critical, service: eda }
+        annotations:
+          summary: "Moins de 2 taches Connect actives (Debezium et sink)"
+          description: "Conteneur arrete, tache FAILED ou metriques absentes : /connectors/<nom>/status."
+          __dashboardUid__: eda-chaine
+          __panelId__: "2"
+
+      - uid: eda-a11-ecriture
+        title: "A11 - EDA ecriture Elasticsearch bloquee"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              # Le sink retente sans remonter d'erreur Connect : on detecte l'absence de validation. Une ecriture reussie fait
+              # baisser le compte ; s'il ne baisse jamais en 3 min, rien n'est ecrit. Documents rejetes un par un : non vus (warn).
+              expr: sum(min_over_time(kafka_connect_sink_task_metrics_sink_record_active_count{connector="donation-es"}[3m])) >= sum(kafka_connect_sink_task_metrics_sink_record_active_count{connector="donation-es"} offset 3m) > 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        labels: { severity: warning, service: eda }
+        annotations:
+          summary: "Aucune ecriture validee vers Elasticsearch depuis 3 min, des messages attendent"
+          description: "Verifier Elasticsearch et le compte eda-sink. Les messages restent dans Kafka."
+          __dashboardUid__: eda-chaine
+          __panelId__: "13"
