@@ -32,6 +32,9 @@ spec:
             # desenregistre Prometheus / Tempo (alertes en "plugin not registered").
             - name: GF_PLUGINS_PREINSTALL_AUTO_UPDATE
               value: "false"
+            # Lecture des metriques JMX de Kafka Connect, en plus de la configuration de l'image
+            - name: OTELCOL_EXTRA_ARGS
+              value: --config=file:/otel-lgtm/kafka-connect-scrape.yaml
           envFrom:
             # GF_SECURITY_ADMIN_USER / GF_SECURITY_ADMIN_PASSWORD, cree hors Git
             - secretRef:
@@ -77,6 +80,9 @@ spec:
             - name: grafana-provisioning
               mountPath: /otel-lgtm/grafana/conf/provisioning/alerting/donation-api-alerts.yaml
               subPath: donation-api-alerts.yaml
+            - name: grafana-provisioning
+              mountPath: /otel-lgtm/kafka-connect-scrape.yaml
+              subPath: kafka-connect-scrape.yaml
             # Repertoire complet (pas de subPath) : mis a jour a chaud par le kubelet
             - name: dashboards
               mountPath: /otel-lgtm/socle-dashboards

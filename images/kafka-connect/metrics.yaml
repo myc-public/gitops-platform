@@ -1,0 +1,15 @@
+# Agent JMX de Kafka Connect (EDA7), lance par KAFKA_OPTS (connect.env) sur le port 9404.
+# Lu par le Collector d'otel-lgtm : apps/observability/base/otelcol/kafka-connect-scrape.yaml
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+# Seules les MBeans des alertes A7, A9, A10, A11 et du tableau de bord : le reste de la JVM ne sert pas ici
+includeObjectNames:
+  - "kafka.connect:type=connector-metrics,*"
+  - "kafka.connect:type=connector-task-metrics,*"
+  - "kafka.connect:type=sink-task-metrics,*"
+  - "kafka.connect:type=source-task-metrics,*"
+  - "kafka.connect:type=task-error-metrics,*"
+  - "kafka.consumer:type=consumer-fetch-manager-metrics,*"
+  - "debezium.mysql:type=connector-metrics,context=streaming,*"
+rules:
+  - pattern: ".*"

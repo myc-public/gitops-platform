@@ -15,3 +15,7 @@ spec:
       port: 8083
       targetPort: rest
       protocol: TCP
+    - name: metrics
+      port: 9404
+      targetPort: metrics
+      protocol: TCP

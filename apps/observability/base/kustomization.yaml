@@ -20,3 +20,4 @@ configMapGenerator:
     files:
       - grafana/dashboards-provider.yaml
       - grafana/alerting/donation-api-alerts.yaml
+      - otelcol/kafka-connect-scrape.yaml

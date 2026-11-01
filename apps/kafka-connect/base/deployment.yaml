@@ -28,6 +28,9 @@ spec:
             - name: rest
               containerPort: 8083
               protocol: TCP
+            - name: metrics
+              containerPort: 9404
+              protocol: TCP
           readinessProbe:
             httpGet: { path: /connectors, port: rest }
             initialDelaySeconds: 20

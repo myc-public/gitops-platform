@@ -71,6 +71,7 @@ docker compose up -d --build donation-cqrs-api  # nouvelle version de la recherc
 docker compose run --rm kafka-topics       # reappliquer les topics apres une modification de create-topics.sh
 docker compose run --rm kafka-connect-config  # reappliquer les connecteurs apres une modification de connectors/*.json
 docker compose run --rm elasticsearch-config  # reappliquer pipelines et compte du sink (un index existant n'est pas modifie)
+docker compose restart otel-lgtm           # relire les alertes et la configuration du Collector
 docker compose down                        # supprimer les conteneurs (donnees conservees)
 docker compose down -v                     # remise a zero complete (donnees supprimees)
 ```

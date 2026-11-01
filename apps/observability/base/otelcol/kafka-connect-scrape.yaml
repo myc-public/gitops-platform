@@ -1,0 +1,15 @@
+# Ajout a la configuration du Collector de l'image otel-lgtm (OTELCOL_EXTRA_ARGS) : l'agent JMX 1.0.1 de Kafka Connect
+# n'a pas de mode OTLP, ses metriques sont lues sur le port 9404. La liste des receivers remplace celle de l'image.
+receivers:
+  prometheus/kafka-connect:
+    config:
+      scrape_configs:
+        - job_name: kafka-connect
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["kafka-connect:9404"]
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp, prometheus/collector, prometheus/kafka-connect]
