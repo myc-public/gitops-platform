@@ -9,7 +9,7 @@ services:
     mem_limit: 1g
     volumes:
       - ./connect.properties:/etc/kafka-connect/secrets/connect.properties:ro
-    networks: [events, data-api, search]
+    networks: [events, data-api, search, telemetry]
     depends_on:
       kafka-topics:
         condition: service_completed_successfully
@@ -43,3 +43,5 @@ networks:
     name: donation-pile-data-api
   search:
     name: donation-pile-search
+  telemetry:
+    name: donation-pile-telemetry

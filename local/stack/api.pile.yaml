@@ -28,10 +28,15 @@ services:
       OIDC_INTERNAL_JWK_SET_URI: http://keycloak:8080/realms/myc-internal/protocol/openid-connect/certs
       OIDC_CUSTOMERS_ISSUER_URI: ${PUBLIC_URL}/realms/myc-customers
       OIDC_CUSTOMERS_JWK_SET_URI: http://keycloak:8080/realms/myc-customers/protocol/openid-connect/certs
+      # Traces, metriques et logs vers otel-lgtm, comme l'overlay dev
+      OTLP_ENDPOINT: http://otel-lgtm:4318
+      OTLP_EXPORT_ENABLED: "true"
     ports: !reset []
-    networks: [api, idp, data-api]
+    networks: [api, idp, data-api, telemetry]
 
 networks:
+  telemetry:
+    name: donation-pile-telemetry
   api:
     name: donation-pile-api
   idp:
