@@ -24,7 +24,7 @@ spec:
           image: docker.io/library/elasticsearch@sha256:ef5cafd961d7e273f13fed8def82e63c5ae0491106b5eecb5a69aa12d64f089b
           command: [sh, /scripts/apply-config.sh]
           envFrom:
-            # ELASTIC_PASSWORD, ES_SINK_PASSWORD, cree hors Git
+            # ELASTIC_PASSWORD, ES_SINK_PASSWORD, ES_READ_PASSWORD, ES_MONITOR_PASSWORD, cree hors Git
             - secretRef:
                 name: elasticsearch-secret
           volumeMounts:

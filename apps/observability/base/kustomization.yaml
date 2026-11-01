@@ -13,6 +13,8 @@ configMapGenerator:
   - name: otel-lgtm-dashboards
     files:
       - grafana/dashboards/donation-api-service.json
+      - grafana/dashboards/eda-chaine.json
+      - grafana/dashboards/eda-metier.json
     options:
       disableNameSuffixHash: true
   # Nom suffixe par un hash : toute modification redemarre Grafana, seul moment ou il relit ces fichiers
@@ -20,4 +22,5 @@ configMapGenerator:
     files:
       - grafana/dashboards-provider.yaml
       - grafana/alerting/donation-api-alerts.yaml
+      - grafana/datasources/elasticsearch-eda.yaml
       - otelcol/kafka-connect-scrape.yaml

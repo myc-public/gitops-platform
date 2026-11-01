@@ -1,0 +1,18 @@
+# Source Elasticsearch des tableaux EDA (ADR 0036) : compte eda-monitor, limite aux dons. L'index des donateurs reste
+# hors d'atteinte : masquer des champs par role exige une licence payante, ses volumes viennent donc de Prometheus.
+# Date de reference = occurredAt : une relecture de l'index ne deplace pas les chiffres dans le temps.
+apiVersion: 1
+datasources:
+  - name: Elasticsearch EDA
+    uid: elasticsearch-eda
+    type: elasticsearch
+    access: proxy
+    url: http://elasticsearch:9200
+    basicAuth: true
+    basicAuthUser: eda-monitor
+    editable: false
+    jsonData:
+      index: donations
+      timeField: occurredAt
+    secureJsonData:
+      basicAuthPassword: $ES_MONITOR_PASSWORD

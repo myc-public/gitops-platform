@@ -36,7 +36,7 @@ spec:
             - name: OTELCOL_EXTRA_ARGS
               value: --config=file:/otel-lgtm/kafka-connect-scrape.yaml
           envFrom:
-            # GF_SECURITY_ADMIN_USER / GF_SECURITY_ADMIN_PASSWORD, cree hors Git
+            # GF_SECURITY_ADMIN_USER / GF_SECURITY_ADMIN_PASSWORD, ES_MONITOR_PASSWORD, cree hors Git
             - secretRef:
                 name: observability-grafana-secret
           ports:
@@ -83,6 +83,9 @@ spec:
             - name: grafana-provisioning
               mountPath: /otel-lgtm/kafka-connect-scrape.yaml
               subPath: kafka-connect-scrape.yaml
+            - name: grafana-provisioning
+              mountPath: /otel-lgtm/grafana/conf/provisioning/datasources/elasticsearch-eda.yaml
+              subPath: elasticsearch-eda.yaml
             # Repertoire complet (pas de subPath) : mis a jour a chaud par le kubelet
             - name: dashboards
               mountPath: /otel-lgtm/socle-dashboards

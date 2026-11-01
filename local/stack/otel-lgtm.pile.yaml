@@ -9,6 +9,7 @@ services:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER absent}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD absent}
       OTELCOL_EXTRA_ARGS: --config=file:/otel-lgtm/kafka-connect-scrape.yaml
+      ES_MONITOR_PASSWORD: ${ES_MONITOR_PASSWORD:?ES_MONITOR_PASSWORD absent}
     mem_limit: 2g
     ports:
       - "127.0.0.1:${PILE_GRAFANA_PORT:-3000}:3000"
@@ -16,9 +17,10 @@ services:
       - otel-lgtm-data:/data
       - ../../apps/observability/base/grafana/dashboards-provider.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/socle-dashboards.yaml:ro
       - ../../apps/observability/base/grafana/alerting/donation-api-alerts.yaml:/otel-lgtm/grafana/conf/provisioning/alerting/donation-api-alerts.yaml:ro
+      - ../../apps/observability/base/grafana/datasources/elasticsearch-eda.yaml:/otel-lgtm/grafana/conf/provisioning/datasources/elasticsearch-eda.yaml:ro
       - ../../apps/observability/base/otelcol/kafka-connect-scrape.yaml:/otel-lgtm/kafka-connect-scrape.yaml:ro
       - ../../apps/observability/base/grafana/dashboards:/otel-lgtm/socle-dashboards:ro
-    networks: [telemetry]
+    networks: [telemetry, search]
 
 volumes:
   otel-lgtm-data:
@@ -26,3 +28,5 @@ volumes:
 networks:
   telemetry:
     name: donation-pile-telemetry
+  search:
+    name: donation-pile-search

@@ -14,7 +14,10 @@ services:
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ELASTICSEARCH_USERNAME: eda-read
       ELASTICSEARCH_PASSWORD: ${ES_READ_PASSWORD:?ES_READ_PASSWORD absent}
-    networks: [api, idp, search]
+      # Metriques et traces vers otel-lgtm
+      OTLP_ENDPOINT: http://otel-lgtm:4318
+      OTLP_EXPORT_ENABLED: "true"
+    networks: [api, idp, search, telemetry]
     depends_on:
       elasticsearch-config:
         condition: service_completed_successfully
@@ -26,3 +29,5 @@ networks:
     name: donation-pile-idp
   search:
     name: donation-pile-search
+  telemetry:
+    name: donation-pile-telemetry

@@ -22,3 +22,5 @@ configMapGenerator:
       - config/donations-v1.json
       - config/eda-sink-role.json
       - config/eda-read-role.json
+      - config/eda-monitor-role.json
+      - config/latency-mapping.json
