@@ -81,6 +81,9 @@ spec:
               mountPath: /otel-lgtm/grafana/conf/provisioning/alerting/donation-api-alerts.yaml
               subPath: donation-api-alerts.yaml
             - name: grafana-provisioning
+              mountPath: /otel-lgtm/grafana/conf/provisioning/alerting/eda-alerts.yaml
+              subPath: eda-alerts.yaml
+            - name: grafana-provisioning
               mountPath: /otel-lgtm/kafka-connect-scrape.yaml
               subPath: kafka-connect-scrape.yaml
             - name: grafana-provisioning

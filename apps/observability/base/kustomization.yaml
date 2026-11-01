@@ -22,5 +22,6 @@ configMapGenerator:
     files:
       - grafana/dashboards-provider.yaml
       - grafana/alerting/donation-api-alerts.yaml
+      - grafana/alerting/eda-alerts.yaml
       - grafana/datasources/elasticsearch-eda.yaml
       - otelcol/kafka-connect-scrape.yaml
